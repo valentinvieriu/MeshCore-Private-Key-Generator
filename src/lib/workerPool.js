@@ -1,114 +1,9 @@
 let nextJobId = 1
 
-function buildWorkerScript() {
-  return `
-    let activeJobs = new Set();
-
-    function bytesToHex(bytes) {
-      return Array.from(bytes, (b) => b.toString(16).padStart(2, '0')).join('');
-    }
-    function base64UrlToBytes(value) {
-      const padded = value.replace(/-/g, '+').replace(/_/g, '/').padEnd(Math.ceil(value.length / 4) * 4, '=');
-      const decoded = atob(padded);
-      const out = new Uint8Array(decoded.length);
-      for (let i = 0; i < decoded.length; i++) out[i] = decoded.charCodeAt(i);
-      return out;
-    }
-    function clampMeshCorePrivateKey(bytes64) {
-      const out = new Uint8Array(bytes64);
-      out[0] &= 248;
-      out[31] &= 63;
-      out[31] |= 64;
-      return out;
-    }
-    function hexToBytes(hex) {
-      const out = new Uint8Array(hex.length / 2);
-      for (let i = 0; i < out.length; i++) out[i] = Number.parseInt(hex.slice(i * 2, i * 2 + 2), 16);
-      return out;
-    }
-
-    async function run(jobId, targetHex, batchSize) {
-      const prefix = hexToBytes(targetHex);
-      let pendingAttempts = 0;
-      let pendingMs = 0;
-      let lastPostTime = performance.now();
-      while (activeJobs.has(jobId)) {
-        const batchStart = performance.now();
-        let attempts = 0;
-        for (let i = 0; i < batchSize && activeJobs.has(jobId); i++) {
-          // Hot loop: only generateKey + raw public export + byte comparison
-          const keyPair = await crypto.subtle.generateKey({ name: 'Ed25519' }, true, ['sign', 'verify']);
-          const rawPub = new Uint8Array(await crypto.subtle.exportKey('raw', keyPair.publicKey));
-          attempts++;
-
-          // Reserved prefix check in bytes (no hex conversion)
-          if (rawPub[0] === 0x00 || rawPub[0] === 0xff) continue;
-
-          // Prefix comparison directly on bytes
-          let match = true;
-          for (let j = 0; j < prefix.length; j++) {
-            if (rawPub[j] !== prefix[j]) { match = false; break; }
-          }
-          if (!match) continue;
-
-          // Match found — now do the expensive exports on the SAME keypair
-          const [privateJwk, pkcs8Buffer] = await Promise.all([
-            crypto.subtle.exportKey('jwk', keyPair.privateKey),
-            crypto.subtle.exportKey('pkcs8', keyPair.privateKey),
-          ]);
-          if (!privateJwk.d) throw new Error('Private JWK export missing seed');
-          const seed = base64UrlToBytes(privateJwk.d);
-          const digest = new Uint8Array(await crypto.subtle.digest('SHA-512', seed));
-          const meshPriv = clampMeshCorePrivateKey(digest);
-
-          activeJobs.delete(jobId);
-          postMessage({
-            type: 'found', jobId,
-            attemptsDelta: pendingAttempts + attempts,
-            elapsedMs: pendingMs + (performance.now() - batchStart),
-            seedHex: bytesToHex(seed),
-            rawPublicKeyHex: bytesToHex(rawPub),
-            meshcorePrivateHex: bytesToHex(meshPriv),
-            pkcs8Hex: bytesToHex(new Uint8Array(pkcs8Buffer)),
-          });
-          return;
-        }
-        pendingAttempts += attempts;
-        pendingMs += performance.now() - batchStart;
-        if (performance.now() - lastPostTime >= 200) {
-          postMessage({ type: 'progress', jobId, attemptsDelta: pendingAttempts, elapsedMs: pendingMs });
-          pendingAttempts = 0;
-          pendingMs = 0;
-          lastPostTime = performance.now();
-        }
-        await new Promise((resolve) => setTimeout(resolve, 0));
-      }
-      if (pendingAttempts > 0) {
-        postMessage({ type: 'progress', jobId, attemptsDelta: pendingAttempts, elapsedMs: pendingMs });
-      }
-      postMessage({ type: 'stopped', jobId });
-    }
-
-    self.onmessage = (event) => {
-      const msg = event.data || {};
-      if (msg.type === 'start') {
-        activeJobs.add(msg.jobId);
-        run(msg.jobId, msg.targetHex, msg.batchSize).catch((error) => {
-          activeJobs.delete(msg.jobId);
-          postMessage({ type: 'error', jobId: msg.jobId, message: error.message || String(error) });
-        });
-      } else if (msg.type === 'stop') {
-        activeJobs.delete(msg.jobId);
-      }
-    };
-  `
-}
-
 export class WorkerPool {
   constructor() {
     this.workers = []
     this.workerCount = 0
-    this.scriptUrl = null
     this.activeJobId = null
   }
 
@@ -116,17 +11,16 @@ export class WorkerPool {
     if (this.workers.length === workerCount) return
     this.destroy()
     this.workerCount = workerCount
-    const source = buildWorkerScript()
-    const blob = new Blob([source], { type: 'application/javascript' })
-    this.scriptUrl = URL.createObjectURL(blob)
-    for (let i = 0; i < workerCount; i++) this.workers.push(new Worker(this.scriptUrl))
+    for (let i = 0; i < workerCount; i++) {
+      this.workers.push(
+        new Worker(new URL('./searchWorker.js', import.meta.url), { type: 'module' })
+      )
+    }
   }
 
   destroy() {
     for (const worker of this.workers) worker.terminate()
     this.workers = []
-    if (this.scriptUrl) URL.revokeObjectURL(this.scriptUrl)
-    this.scriptUrl = null
     this.activeJobId = null
   }
 
@@ -164,8 +58,9 @@ export class WorkerPool {
           const msg = event.data || {}
           if (msg.jobId !== jobId) return
           if (msg.type === 'progress') {
-            onProgress?.(msg.attemptsDelta || 0, msg.elapsedMs || 0)
-          } else if (msg.type === 'found') {
+            onProgress?.(msg.attemptsDelta || 0)
+          } else if (msg.type === 'match') {
+            // Stop all workers immediately, then resolve — finalization happens on main thread
             onFound?.(msg)
             for (const w of this.workers) {
               try { w.postMessage({ type: 'stop', jobId }) } catch { /* ignore */ }

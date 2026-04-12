@@ -1,6 +1,6 @@
 import { describe, test, expect } from 'vitest'
 import {
-  bytesToHex, normalizeHex, hexToBytes, base64UrlToBytes,
+  bytesToHex, normalizeHex, hexToBytes, base64UrlToBytes, base64UrlEncode,
   clampMeshCorePrivateKey, prefixMatches, isReservedPrefix,
   createMeshCoreCandidateFromKeyPair, validateCandidate,
 } from './crypto'
@@ -25,6 +25,13 @@ describe('base64url', () => {
   test('decodes 32 bytes', () => {
     const bytes = base64UrlToBytes('AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8')
     expect(bytes.length).toBe(32)
+  })
+
+  test('encode/decode round-trip', () => {
+    const original = crypto.getRandomValues(new Uint8Array(32))
+    const encoded = base64UrlEncode(original)
+    const decoded = base64UrlToBytes(encoded)
+    expect(bytesToHex(decoded)).toBe(bytesToHex(original))
   })
 })
 

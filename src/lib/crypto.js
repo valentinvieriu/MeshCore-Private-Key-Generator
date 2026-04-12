@@ -14,6 +14,12 @@ export function hexToBytes(hex) {
   return out
 }
 
+export function base64UrlEncode(bytes) {
+  let binary = ''
+  for (let i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i])
+  return btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '')
+}
+
 export function base64UrlToBytes(value) {
   const padded = value.replace(/-/g, '+').replace(/_/g, '/').padEnd(Math.ceil(value.length / 4) * 4, '=')
   const decoded = atob(padded)
@@ -64,8 +70,8 @@ export function formatEta(seconds) {
   return `${(seconds / 86400).toFixed(1)}d`
 }
 
-export function expectedAttemptsForBytes(byteCount) {
-  return Math.pow(256, byteCount)
+export function expectedAttemptsForHexLength(hexLength) {
+  return Math.pow(16, hexLength)
 }
 
 export async function createMeshCoreCandidateFromKeyPair(keyPair) {
@@ -83,6 +89,26 @@ export async function createMeshCoreCandidateFromKeyPair(keyPair) {
   return {
     seedHex: bytesToHex(seed),
     rawPublicKeyHex: bytesToHex(rawPublic),
+    meshcorePrivateHex: bytesToHex(meshPriv),
+    pkcs8Hex: bytesToHex(new Uint8Array(pkcs8Buffer)),
+  }
+}
+
+export async function finalizeMeshCoreCandidate(seedHex, rawPublicKeyHex) {
+  const seedBytes = hexToBytes(seedHex)
+  const pubBytes = hexToBytes(rawPublicKeyHex)
+  const jwk = {
+    kty: 'OKP', crv: 'Ed25519',
+    d: base64UrlEncode(seedBytes),
+    x: base64UrlEncode(pubBytes),
+  }
+  const privKey = await crypto.subtle.importKey('jwk', jwk, { name: 'Ed25519' }, true, ['sign'])
+  const pkcs8Buffer = await crypto.subtle.exportKey('pkcs8', privKey)
+  const digest = new Uint8Array(await crypto.subtle.digest('SHA-512', seedBytes))
+  const meshPriv = clampMeshCorePrivateKey(digest)
+  return {
+    seedHex,
+    rawPublicKeyHex,
     meshcorePrivateHex: bytesToHex(meshPriv),
     pkcs8Hex: bytesToHex(new Uint8Array(pkcs8Buffer)),
   }
