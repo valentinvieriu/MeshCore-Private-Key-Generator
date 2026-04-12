@@ -15,8 +15,13 @@ export default function LiveStats({ running, totalAttempts, startTime, prefixHex
   // Wall-clock rate: total attempts across all workers / real elapsed time
   const rate = elapsedSec > 0.5 ? totalAttempts / elapsedSec : 0
   const expectedAttempts = expectedAttemptsForHexLength(prefixHexLength)
-  const progressRatio = Math.min(1, totalAttempts / expectedAttempts)
-  const remaining = rate > 0 ? Math.max(0, (expectedAttempts - totalAttempts) / rate) : NaN
+  // CDF of geometric distribution: probability of having found a match after N attempts
+  // This asymptotically approaches 100% but never falsely claims certainty
+  const findProbability = 1 - Math.exp(-totalAttempts / expectedAttempts)
+  // ETA to 50% probability (median): -ln(0.5) * expected / rate ≈ 0.693 * expected / rate
+  const medianAttempts = Math.ceil(expectedAttempts * Math.LN2)
+  const remainingAttempts = Math.max(0, medianAttempts - totalAttempts)
+  const remaining = rate > 0 ? remainingAttempts / rate : NaN
 
   return (
     <section className="rounded-3xl border border-slate-800 bg-slate-900/80 p-6 shadow-2xl shadow-black/20 backdrop-blur">
@@ -30,17 +35,17 @@ export default function LiveStats({ running, totalAttempts, startTime, prefixHex
 
       <div className="mt-5 overflow-hidden rounded-2xl border border-slate-800 bg-slate-950">
         <div className="flex items-center justify-between border-b border-slate-800 px-4 py-3">
-          <span className="text-sm font-medium text-slate-200">Progress</span>
+          <span className="text-sm font-medium text-slate-200">Chance of finding a match</span>
           <span className="text-xs text-slate-400">
             {running
-              ? `${Math.min(100, progressRatio * 100).toFixed(progressRatio < 0.1 ? 1 : 0)}% of average search space`
+              ? `${(findProbability * 100).toFixed(findProbability < 0.1 ? 1 : 0)}%`
               : 'Ready'}
           </span>
         </div>
         <div className="h-3 w-full bg-slate-900">
           <div
             className="h-3 bg-cyan-400 transition-all duration-300"
-            style={{ width: `${Math.min(100, progressRatio * 100)}%` }}
+            style={{ width: `${findProbability * 100}%` }}
           />
         </div>
       </div>
