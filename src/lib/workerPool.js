@@ -29,6 +29,9 @@ function buildWorkerScript() {
 
     async function run(jobId, targetHex, batchSize) {
       const prefix = hexToBytes(targetHex);
+      let pendingAttempts = 0;
+      let pendingMs = 0;
+      let lastPostTime = performance.now();
       while (activeJobs.has(jobId)) {
         const batchStart = performance.now();
         let attempts = 0;
@@ -61,8 +64,8 @@ function buildWorkerScript() {
           activeJobs.delete(jobId);
           postMessage({
             type: 'found', jobId,
-            attemptsDelta: attempts,
-            elapsedMs: performance.now() - batchStart,
+            attemptsDelta: pendingAttempts + attempts,
+            elapsedMs: pendingMs + (performance.now() - batchStart),
             seedHex: bytesToHex(seed),
             rawPublicKeyHex: bytesToHex(rawPub),
             meshcorePrivateHex: bytesToHex(meshPriv),
@@ -70,8 +73,18 @@ function buildWorkerScript() {
           });
           return;
         }
-        postMessage({ type: 'progress', jobId, attemptsDelta: attempts, elapsedMs: performance.now() - batchStart });
+        pendingAttempts += attempts;
+        pendingMs += performance.now() - batchStart;
+        if (performance.now() - lastPostTime >= 200) {
+          postMessage({ type: 'progress', jobId, attemptsDelta: pendingAttempts, elapsedMs: pendingMs });
+          pendingAttempts = 0;
+          pendingMs = 0;
+          lastPostTime = performance.now();
+        }
         await new Promise((resolve) => setTimeout(resolve, 0));
+      }
+      if (pendingAttempts > 0) {
+        postMessage({ type: 'progress', jobId, attemptsDelta: pendingAttempts, elapsedMs: pendingMs });
       }
       postMessage({ type: 'stopped', jobId });
     }

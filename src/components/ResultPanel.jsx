@@ -18,9 +18,37 @@ export default function ResultPanel({ result }) {
         <div className="rounded-2xl border border-slate-800 bg-slate-950 p-4 lg:col-span-1">
           <div className="text-xs uppercase tracking-wide text-slate-400">Matched prefix</div>
           <div className="mt-2 font-mono text-2xl font-bold text-cyan-300">{result?.prefix || '—'}</div>
+
           <div className="mt-5 text-xs uppercase tracking-wide text-slate-400">Raw public key</div>
-          <div className="mt-2 break-all font-mono text-sm leading-6 text-slate-200">{result?.rawPublicKeyHex || '—'}</div>
+          <div className="mt-2 break-all font-mono text-sm leading-6 text-slate-200">
+            {result ? (
+              <>
+                <span className="rounded bg-cyan-400/15 px-0.5 text-cyan-300">{result.rawPublicKeyHex.slice(0, result.prefix.length)}</span>
+                {result.rawPublicKeyHex.slice(result.prefix.length)}
+              </>
+            ) : '—'}
+          </div>
           <CopyButton value={result?.rawPublicKeyHex} label="Copy public key" />
+
+          {result && (
+            <div className="mt-5">
+              <div className="text-xs uppercase tracking-wide text-slate-400">Node ID by prefix length</div>
+              <div className="mt-2 grid gap-2">
+                {[1, 2, 4].map((bytes) => {
+                  const hexLen = bytes * 2
+                  const id = result.rawPublicKeyHex.slice(0, hexLen)
+                  const isMatched = result.prefix.length === hexLen
+                  return (
+                    <div key={bytes} className={`flex items-center gap-3 rounded-xl border px-3 py-2 ${isMatched ? 'border-cyan-500/30 bg-cyan-500/10' : 'border-slate-800 bg-slate-900'}`}>
+                      <span className="text-xs text-slate-400 w-14 shrink-0">{bytes} byte{bytes > 1 ? 's' : ''}</span>
+                      <span className={`font-mono text-sm font-bold ${isMatched ? 'text-cyan-300' : 'text-slate-200'}`}>{id}</span>
+                      {isMatched && <span className="ml-auto text-xs text-cyan-400">matched</span>}
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
+          )}
         </div>
 
         <div className="rounded-2xl border border-slate-800 bg-slate-950 p-4 lg:col-span-2">

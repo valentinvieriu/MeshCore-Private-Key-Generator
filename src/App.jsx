@@ -31,7 +31,8 @@ export default function App() {
   const runningRef = useRef(false)
   const foundRef = useRef(false)
   const rollingSamplesRef = useRef([])
-  const tickRef = useRef(null)
+  const pendingAttemptsRef = useRef(0)
+  const flushRef = useRef(null)
 
   // Keep runningRef in sync
   useEffect(() => { runningRef.current = running }, [running])
@@ -67,19 +68,6 @@ export default function App() {
     })
   }, [byteCount])
 
-  // Tick timer for UI updates while running
-  useEffect(() => {
-    if (running) {
-      tickRef.current = setInterval(() => {
-        // Force a re-render so LiveStats picks up elapsed time
-        setTotalAttempts((v) => v)
-      }, 150)
-    } else {
-      clearInterval(tickRef.current)
-    }
-    return () => clearInterval(tickRef.current)
-  }, [running])
-
   const computeRate = useCallback(() => {
     const samples = rollingSamplesRef.current
     if (!samples.length) return 0
@@ -87,6 +75,23 @@ export default function App() {
     const ms = samples.reduce((sum, s) => sum + s.ms, 0)
     return ms > 0 ? (attempts / ms) * 1000 : 0
   }, [])
+
+  // Flush accumulated progress to React state on a fixed cadence
+  useEffect(() => {
+    if (running) {
+      flushRef.current = setInterval(() => {
+        const pending = pendingAttemptsRef.current
+        if (pending > 0) {
+          pendingAttemptsRef.current = 0
+          setTotalAttempts((prev) => prev + pending)
+        }
+        setRate(computeRate())
+      }, 200)
+    } else {
+      clearInterval(flushRef.current)
+    }
+    return () => clearInterval(flushRef.current)
+  }, [running, computeRate])
 
   function validate() {
     const target = normalizeHex(targetHex)
@@ -107,6 +112,7 @@ export default function App() {
       setRate(0)
       setResult(null)
       rollingSamplesRef.current = []
+      pendingAttemptsRef.current = 0
       foundRef.current = false
 
       setRunning(true)
@@ -118,15 +124,22 @@ export default function App() {
         targetHex: target,
         batchSize,
         onProgress: (attempts, elapsedMs) => {
-          setTotalAttempts((prev) => prev + attempts)
+          pendingAttemptsRef.current += attempts
           rollingSamplesRef.current.push({ attempts, ms: elapsedMs })
           if (rollingSamplesRef.current.length > 40) rollingSamplesRef.current.shift()
-          setRate(computeRate())
         },
         onFound: (msg) => {
-          setTotalAttempts((prev) => prev + (msg.attemptsDelta || 0))
+          pendingAttemptsRef.current += (msg.attemptsDelta || 0)
         },
       })
+
+      // Final flush of pending attempts
+      const remaining = pendingAttemptsRef.current
+      if (remaining > 0) {
+        pendingAttemptsRef.current = 0
+        setTotalAttempts((prev) => prev + remaining)
+      }
+      setRate(computeRate())
 
       if (!runningRef.current || !foundMsg) {
         setRunning(false)

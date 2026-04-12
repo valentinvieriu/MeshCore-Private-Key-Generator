@@ -34,7 +34,8 @@ export default function SearchSettings({
               <button
                 key={b}
                 onClick={() => handleByteChange(b)}
-                className={`rounded-2xl border px-4 py-3 text-sm font-semibold transition ${
+                disabled={running}
+                className={`rounded-2xl border px-4 py-3 text-sm font-semibold transition disabled:pointer-events-none disabled:opacity-50 ${
                   byteCount === b
                     ? 'border-cyan-500/40 bg-cyan-500/15 text-cyan-100 hover:bg-cyan-500/25'
                     : 'border-slate-700 bg-slate-800 text-slate-200 hover:bg-slate-700'
@@ -52,10 +53,11 @@ export default function SearchSettings({
             id="targetHex"
             value={targetHex}
             onChange={handleTargetChange}
+            disabled={running}
             spellCheck={false}
             autoComplete="off"
             placeholder={`Example: ${'11'.repeat(byteCount)}`}
-            className="w-full rounded-2xl border border-slate-700 bg-slate-950 px-4 py-3 font-mono text-base outline-none ring-0 transition placeholder:text-slate-500 focus:border-cyan-400"
+            className="w-full rounded-2xl border border-slate-700 bg-slate-950 px-4 py-3 font-mono text-base outline-none ring-0 transition placeholder:text-slate-500 focus:border-cyan-400 disabled:opacity-50"
           />
           <p className="mt-2 text-xs text-slate-400">Enter exactly {byteCount * 2} hex characters for a {byteCount}-byte prefix.</p>
           {reserved && (
@@ -74,8 +76,9 @@ export default function SearchSettings({
             max={16}
             step={1}
             value={workerCount}
+            disabled={running}
             onChange={(e) => setWorkerCount(Math.max(1, Math.min(16, Number(e.target.value) || 1)))}
-            className="w-full rounded-2xl border border-slate-700 bg-slate-950 px-4 py-3 text-base outline-none ring-0 transition focus:border-cyan-400"
+            className="w-full rounded-2xl border border-slate-700 bg-slate-950 px-4 py-3 text-base outline-none ring-0 transition focus:border-cyan-400 disabled:opacity-50"
           />
           <p className="mt-2 text-xs text-slate-400">Defaults to available CPU threads minus one, capped for responsiveness.</p>
         </div>
@@ -89,8 +92,9 @@ export default function SearchSettings({
             max={512}
             step={8}
             value={batchSize}
+            disabled={running}
             onChange={(e) => setBatchSize(Math.max(8, Math.min(512, Number(e.target.value) || 64)))}
-            className="w-full rounded-2xl border border-slate-700 bg-slate-950 px-4 py-3 text-base outline-none ring-0 transition focus:border-cyan-400"
+            className="w-full rounded-2xl border border-slate-700 bg-slate-950 px-4 py-3 text-base outline-none ring-0 transition focus:border-cyan-400 disabled:opacity-50"
           />
           <p className="mt-2 text-xs text-slate-400">Higher is usually faster. Lower improves stop latency on slower devices.</p>
         </div>
@@ -133,7 +137,10 @@ export default function SearchSettings({
         </button>
         <button
           onClick={onRandomPrefix}
-          className="rounded-2xl border border-slate-700 bg-slate-800 px-5 py-3 text-sm font-semibold text-slate-200 transition hover:bg-slate-700"
+          disabled={running}
+          className={`rounded-2xl border border-slate-700 bg-slate-800 px-5 py-3 text-sm font-semibold transition ${
+            running ? 'cursor-not-allowed text-slate-400 opacity-60' : 'text-slate-200 hover:bg-slate-700'
+          }`}
         >
           Random prefix
         </button>
