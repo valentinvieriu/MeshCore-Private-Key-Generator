@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
-import { formatNumber, formatDuration, formatEta, expectedAttemptsForBytes } from '../lib/crypto'
+import { formatNumber, formatDuration, formatEta, expectedAttemptsForHexLength } from '../lib/crypto'
 
-export default function LiveStats({ running, totalAttempts, rate, startTime, byteCount }) {
+export default function LiveStats({ running, totalAttempts, startTime, prefixHexLength }) {
   const [now, setNow] = useState(() => performance.now())
 
   useEffect(() => {
@@ -11,7 +11,10 @@ export default function LiveStats({ running, totalAttempts, rate, startTime, byt
   }, [running])
 
   const elapsedMs = running ? now - startTime : 0
-  const expectedAttempts = expectedAttemptsForBytes(byteCount)
+  const elapsedSec = elapsedMs / 1000
+  // Wall-clock rate: total attempts across all workers / real elapsed time
+  const rate = elapsedSec > 0.5 ? totalAttempts / elapsedSec : 0
+  const expectedAttempts = expectedAttemptsForHexLength(prefixHexLength)
   const progressRatio = Math.min(1, totalAttempts / expectedAttempts)
   const remaining = rate > 0 ? Math.max(0, (expectedAttempts - totalAttempts) / rate) : NaN
 

@@ -37,12 +37,24 @@ export default function ResultPanel({ result }) {
                 {[1, 2, 4].map((bytes) => {
                   const hexLen = bytes * 2
                   const id = result.rawPublicKeyHex.slice(0, hexLen)
-                  const isMatched = result.prefix.length === hexLen
+                  const prefixLen = result.prefix.length
+                  const isFullyMatched = prefixLen >= hexLen
+                  const isPartiallyMatched = prefixLen > (bytes - 1) * 2 && prefixLen < hexLen
                   return (
-                    <div key={bytes} className={`flex items-center gap-3 rounded-xl border px-3 py-2 ${isMatched ? 'border-cyan-500/30 bg-cyan-500/10' : 'border-slate-800 bg-slate-900'}`}>
+                    <div key={bytes} className={`flex items-center gap-3 rounded-xl border px-3 py-2 ${isFullyMatched ? 'border-cyan-500/30 bg-cyan-500/10' : 'border-slate-800 bg-slate-900'}`}>
                       <span className="text-xs text-slate-400 w-14 shrink-0">{bytes} byte{bytes > 1 ? 's' : ''}</span>
-                      <span className={`font-mono text-sm font-bold ${isMatched ? 'text-cyan-300' : 'text-slate-200'}`}>{id}</span>
-                      {isMatched && <span className="ml-auto text-xs text-cyan-400">matched</span>}
+                      <span className="font-mono text-sm font-bold">
+                        {isFullyMatched || isPartiallyMatched ? (
+                          <>
+                            <span className="text-cyan-300">{id.slice(0, Math.min(prefixLen, hexLen))}</span>
+                            {prefixLen < hexLen && <span className="text-slate-200">{id.slice(prefixLen)}</span>}
+                          </>
+                        ) : (
+                          <span className="text-slate-200">{id}</span>
+                        )}
+                      </span>
+                      {isFullyMatched && <span className="ml-auto text-xs text-cyan-400">matched</span>}
+                      {isPartiallyMatched && <span className="ml-auto text-xs text-cyan-400/60">partial</span>}
                     </div>
                   )
                 })}

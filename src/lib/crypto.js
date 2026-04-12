@@ -14,6 +14,12 @@ export function hexToBytes(hex) {
   return out
 }
 
+export function base64UrlEncode(bytes) {
+  let binary = ''
+  for (let i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i])
+  return btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '')
+}
+
 export function base64UrlToBytes(value) {
   const padded = value.replace(/-/g, '+').replace(/_/g, '/').padEnd(Math.ceil(value.length / 4) * 4, '=')
   const decoded = atob(padded)
@@ -64,8 +70,8 @@ export function formatEta(seconds) {
   return `${(seconds / 86400).toFixed(1)}d`
 }
 
-export function expectedAttemptsForBytes(byteCount) {
-  return Math.pow(256, byteCount)
+export function expectedAttemptsForHexLength(hexLength) {
+  return Math.pow(16, hexLength)
 }
 
 export async function createMeshCoreCandidateFromKeyPair(keyPair) {

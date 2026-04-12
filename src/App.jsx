@@ -1,21 +1,26 @@
-import { useState, useRef, useEffect, useCallback } from 'react'
-import { bytesToHex, normalizeHex, isReservedPrefix, validateCandidate, createMeshCoreCandidateFromKeyPair } from './lib/crypto'
+import { useState, useRef, useEffect } from 'react'
+import { bytesToHex, normalizeHex, isReservedPrefix, validateCandidate } from './lib/crypto'
 import { WorkerPool } from './lib/workerPool'
 import SearchSettings from './components/SearchSettings'
 import LiveStats from './components/LiveStats'
 import ResultPanel from './components/ResultPanel'
 
-const DEFAULT_BATCH_SIZE = 64
+const DEFAULT_BATCH_SIZE = 512
+const MAX_HEX_LENGTH = 8
 const hardware = navigator.hardwareConcurrency || 4
 const defaultWorkers = Math.max(1, Math.min(8, hardware - 1 || 1))
 
-function randomHexPrefix(byteCount) {
-  const bytes = crypto.getRandomValues(new Uint8Array(byteCount))
-  return bytesToHex(bytes)
+function randomHexPrefix(length) {
+  const bytes = crypto.getRandomValues(new Uint8Array(Math.ceil(length / 2)))
+  let hex = bytesToHex(bytes).slice(0, length)
+  while (isReservedPrefix(hex)) {
+    crypto.getRandomValues(bytes)
+    hex = bytesToHex(bytes).slice(0, length)
+  }
+  return hex
 }
 
 export default function App() {
-  const [byteCount, setByteCount] = useState(1)
   const [targetHex, setTargetHex] = useState('')
   const [workerCount, setWorkerCount] = useState(defaultWorkers)
   const [batchSize, setBatchSize] = useState(DEFAULT_BATCH_SIZE)
@@ -23,14 +28,12 @@ export default function App() {
   const [libsReady, setLibsReady] = useState(false)
   const [error, setError] = useState('')
   const [totalAttempts, setTotalAttempts] = useState(0)
-  const [rate, setRate] = useState(0)
   const [startTime, setStartTime] = useState(0)
   const [result, setResult] = useState(null)
 
   const poolRef = useRef(null)
   const runningRef = useRef(false)
   const foundRef = useRef(false)
-  const rollingSamplesRef = useRef([])
   const pendingAttemptsRef = useRef(0)
   const flushRef = useRef(null)
 
@@ -44,36 +47,22 @@ export default function App() {
 
     async function init() {
       try {
+        // Verify WebCrypto Ed25519 support (needed for PKCS8 export on match)
         const keyPair = await crypto.subtle.generateKey({ name: 'Ed25519' }, true, ['sign', 'verify'])
-        await createMeshCoreCandidateFromKeyPair(keyPair)
+        const rawPub = await crypto.subtle.exportKey('raw', keyPair.publicKey)
+        if (rawPub.byteLength !== 32) throw new Error('Unexpected public key length')
         await pool.init(defaultWorkers)
         setLibsReady(true)
       } catch (err) {
-        setError(err.message || 'Failed to initialize native crypto support.')
+        setError(err.message || 'Failed to initialize crypto.')
       }
     }
     init()
 
     // Set initial random prefix
-    setTargetHex(randomHexPrefix(1))
+    setTargetHex(randomHexPrefix(2))
 
     return () => pool.destroy()
-  }, [])
-
-  // Trim targetHex when byteCount changes
-  useEffect(() => {
-    setTargetHex((prev) => {
-      const clean = normalizeHex(prev)
-      return clean.length > byteCount * 2 ? clean.slice(0, byteCount * 2) : clean
-    })
-  }, [byteCount])
-
-  const computeRate = useCallback(() => {
-    const samples = rollingSamplesRef.current
-    if (!samples.length) return 0
-    const attempts = samples.reduce((sum, s) => sum + s.attempts, 0)
-    const ms = samples.reduce((sum, s) => sum + s.ms, 0)
-    return ms > 0 ? (attempts / ms) * 1000 : 0
   }, [])
 
   // Flush accumulated progress to React state on a fixed cadence
@@ -85,33 +74,29 @@ export default function App() {
           pendingAttemptsRef.current = 0
           setTotalAttempts((prev) => prev + pending)
         }
-        setRate(computeRate())
       }, 200)
     } else {
       clearInterval(flushRef.current)
     }
     return () => clearInterval(flushRef.current)
-  }, [running, computeRate])
+  }, [running])
 
   function validate() {
     const target = normalizeHex(targetHex)
-    if (![1, 2, 4].includes(byteCount)) throw new Error('Prefix length must be 1, 2, or 4 bytes.')
-    if (target.length !== byteCount * 2) throw new Error(`Enter exactly ${byteCount * 2} hex characters.`)
-    if (!Number.isInteger(workerCount) || workerCount < 1 || workerCount > 16) throw new Error('Worker count must be between 1 and 16.')
-    if (!Number.isInteger(batchSize) || batchSize < 8 || batchSize > 512) throw new Error('Batch size must be between 8 and 512.')
+    if (target.length < 1 || target.length > MAX_HEX_LENGTH) throw new Error(`Enter 1 to ${MAX_HEX_LENGTH} hex characters.`)
+    if (!Number.isInteger(workerCount) || workerCount < 1 || workerCount > hardware) throw new Error(`Worker count must be between 1 and ${hardware}.`)
+    if (!Number.isInteger(batchSize) || batchSize < 8 || batchSize > 4096) throw new Error('Batch size must be between 8 and 4096.')
     if (isReservedPrefix(target)) throw new Error('Prefixes starting with 00 or FF are reserved and blocked.')
     return target
   }
 
   async function handleStart() {
     try {
-      if (!libsReady) throw new Error('Native Ed25519 WebCrypto support is unavailable in this browser.')
+      if (!libsReady) throw new Error('WASM Ed25519 crypto is unavailable in this browser.')
       const target = validate()
       setError('')
       setTotalAttempts(0)
-      setRate(0)
       setResult(null)
-      rollingSamplesRef.current = []
       pendingAttemptsRef.current = 0
       foundRef.current = false
 
@@ -123,10 +108,8 @@ export default function App() {
       const foundMsg = await poolRef.current.runSearch({
         targetHex: target,
         batchSize,
-        onProgress: (attempts, elapsedMs) => {
+        onProgress: (attempts) => {
           pendingAttemptsRef.current += attempts
-          rollingSamplesRef.current.push({ attempts, ms: elapsedMs })
-          if (rollingSamplesRef.current.length > 40) rollingSamplesRef.current.shift()
         },
         onFound: (msg) => {
           pendingAttemptsRef.current += (msg.attemptsDelta || 0)
@@ -139,7 +122,6 @@ export default function App() {
         pendingAttemptsRef.current = 0
         setTotalAttempts((prev) => prev + remaining)
       }
-      setRate(computeRate())
 
       if (!runningRef.current || !foundMsg) {
         setRunning(false)
@@ -162,7 +144,8 @@ export default function App() {
   }
 
   function handleRandomPrefix() {
-    setTargetHex(randomHexPrefix(byteCount))
+    const length = normalizeHex(targetHex).length || 2
+    setTargetHex(randomHexPrefix(length))
     setError('')
   }
 
@@ -182,16 +165,15 @@ export default function App() {
           </div>
           <div className="rounded-2xl border border-amber-400/25 bg-amber-400/10 px-4 py-3 text-sm text-amber-100 shadow-lg shadow-black/20">
             <div className="font-semibold">Search difficulty</div>
-            <div className="mt-1">1 byte is instant. 2 bytes takes seconds. 4 bytes can take a long time even with multiple cores.</div>
+            <div className="mt-1">Each hex character multiplies difficulty by 16. 1-2 chars is instant, 5+ can take a while.</div>
           </div>
         </div>
 
         <div className="grid gap-6 lg:grid-cols-[1.1fr_0.9fr]">
           <SearchSettings
-            byteCount={byteCount}
-            setByteCount={setByteCount}
             targetHex={targetHex}
             setTargetHex={setTargetHex}
+            maxHexLength={MAX_HEX_LENGTH}
             workerCount={workerCount}
             setWorkerCount={setWorkerCount}
             batchSize={batchSize}
@@ -199,6 +181,7 @@ export default function App() {
             running={running}
             libsReady={libsReady}
             error={error}
+            maxWorkers={hardware}
             onStart={handleStart}
             onStop={handleStop}
             onRandomPrefix={handleRandomPrefix}
@@ -206,9 +189,8 @@ export default function App() {
           <LiveStats
             running={running}
             totalAttempts={totalAttempts}
-            rate={rate}
             startTime={startTime}
-            byteCount={byteCount}
+            prefixHexLength={normalizeHex(targetHex).length}
           />
         </div>
 

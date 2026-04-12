@@ -1,22 +1,16 @@
-import { normalizeHex, isReservedPrefix, formatNumber, expectedAttemptsForBytes } from '../lib/crypto'
-
-const BYTE_OPTIONS = [1, 2, 4]
+import { normalizeHex, isReservedPrefix, formatNumber, expectedAttemptsForHexLength } from '../lib/crypto'
 
 export default function SearchSettings({
-  byteCount, setByteCount, targetHex, setTargetHex,
+  targetHex, setTargetHex, maxHexLength,
   workerCount, setWorkerCount, batchSize, setBatchSize,
-  running, libsReady, error, onStart, onStop, onRandomPrefix,
+  running, libsReady, error, maxWorkers, onStart, onStop, onRandomPrefix,
 }) {
-  const expectedAttempts = expectedAttemptsForBytes(byteCount)
+  const hexLength = normalizeHex(targetHex).length
+  const expectedAttempts = expectedAttemptsForHexLength(hexLength || 1)
   const reserved = isReservedPrefix(targetHex)
 
   function handleTargetChange(e) {
-    const limit = byteCount * 2
-    setTargetHex(normalizeHex(e.target.value).slice(0, limit))
-  }
-
-  function handleByteChange(value) {
-    setByteCount(value)
+    setTargetHex(normalizeHex(e.target.value).slice(0, maxHexLength))
   }
 
   return (
@@ -28,38 +22,21 @@ export default function SearchSettings({
 
       <div className="grid gap-5 md:grid-cols-2">
         <div className="md:col-span-2">
-          <label className="mb-2 block text-sm font-medium text-slate-200">Prefix length</label>
-          <div className="grid grid-cols-3 gap-3">
-            {BYTE_OPTIONS.map((b) => (
-              <button
-                key={b}
-                onClick={() => handleByteChange(b)}
-                disabled={running}
-                className={`rounded-2xl border px-4 py-3 text-sm font-semibold transition disabled:pointer-events-none disabled:opacity-50 ${
-                  byteCount === b
-                    ? 'border-cyan-500/40 bg-cyan-500/15 text-cyan-100 hover:bg-cyan-500/25'
-                    : 'border-slate-700 bg-slate-800 text-slate-200 hover:bg-slate-700'
-                }`}
-              >
-                {b} byte{b > 1 ? 's' : ''}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        <div>
           <label htmlFor="targetHex" className="mb-2 block text-sm font-medium text-slate-200">Desired public key prefix</label>
           <input
             id="targetHex"
             value={targetHex}
             onChange={handleTargetChange}
             disabled={running}
+            maxLength={maxHexLength}
             spellCheck={false}
             autoComplete="off"
-            placeholder={`Example: ${'11'.repeat(byteCount)}`}
-            className="w-full rounded-2xl border border-slate-700 bg-slate-950 px-4 py-3 font-mono text-base outline-none ring-0 transition placeholder:text-slate-500 focus:border-cyan-400 disabled:opacity-50"
+            placeholder="Example: ab or c0ffee"
+            className="w-full rounded-2xl border border-slate-700 bg-slate-950 px-4 py-3 font-mono text-lg outline-none ring-0 transition placeholder:text-slate-500 focus:border-cyan-400 disabled:opacity-50"
           />
-          <p className="mt-2 text-xs text-slate-400">Enter exactly {byteCount * 2} hex characters for a {byteCount}-byte prefix.</p>
+          <p className="mt-2 text-xs text-slate-400">
+            1 to {maxHexLength} hex characters (0-9, a-f). Each character multiplies difficulty by 16.
+          </p>
           {reserved && (
             <div className="mt-3 rounded-2xl border border-amber-400/25 bg-amber-400/10 px-4 py-3 text-sm text-amber-100">
               Prefixes starting with <span className="font-semibold">00</span> or <span className="font-semibold">FF</span> are reserved and blocked.
@@ -68,16 +45,34 @@ export default function SearchSettings({
         </div>
 
         <div>
+          <label className="mb-2 block text-sm font-medium text-slate-200">Expected average work</label>
+          <div className="rounded-2xl border border-slate-800 bg-slate-950 px-4 py-3 text-sm text-slate-300">
+            <div className="font-semibold text-white">~{formatNumber(expectedAttempts)} attempts</div>
+            <div className="mt-1 text-slate-400">
+              {hexLength <= 2 ? 'Instant' : hexLength <= 4 ? 'Seconds' : hexLength <= 6 ? 'Minutes to hours' : 'Very long'} for {hexLength || 1} hex char{hexLength !== 1 ? 's' : ''}.
+            </div>
+          </div>
+        </div>
+
+        <div>
+          <label className="mb-2 block text-sm font-medium text-slate-200">Runtime mode</label>
+          <div className="rounded-2xl border border-slate-800 bg-slate-950 px-4 py-3 text-sm text-slate-300">
+            <div className="font-semibold text-white">WASM Ed25519 (libsodium)</div>
+            <div className="mt-1 text-slate-400">Synchronous key derivation via WebAssembly. 100% client-side.</div>
+          </div>
+        </div>
+
+        <div>
           <label htmlFor="workerCount" className="mb-2 block text-sm font-medium text-slate-200">Parallel workers</label>
           <input
             id="workerCount"
             type="number"
             min={1}
-            max={16}
+            max={maxWorkers}
             step={1}
             value={workerCount}
             disabled={running}
-            onChange={(e) => setWorkerCount(Math.max(1, Math.min(16, Number(e.target.value) || 1)))}
+            onChange={(e) => setWorkerCount(Math.max(1, Math.min(maxWorkers, Number(e.target.value) || 1)))}
             className="w-full rounded-2xl border border-slate-700 bg-slate-950 px-4 py-3 text-base outline-none ring-0 transition focus:border-cyan-400 disabled:opacity-50"
           />
           <p className="mt-2 text-xs text-slate-400">Defaults to available CPU threads minus one, capped for responsiveness.</p>
@@ -89,30 +84,14 @@ export default function SearchSettings({
             id="batchSize"
             type="number"
             min={8}
-            max={512}
-            step={8}
+            max={4096}
+            step={64}
             value={batchSize}
             disabled={running}
-            onChange={(e) => setBatchSize(Math.max(8, Math.min(512, Number(e.target.value) || 64)))}
+            onChange={(e) => setBatchSize(Math.max(8, Math.min(4096, Number(e.target.value) || 512)))}
             className="w-full rounded-2xl border border-slate-700 bg-slate-950 px-4 py-3 text-base outline-none ring-0 transition focus:border-cyan-400 disabled:opacity-50"
           />
           <p className="mt-2 text-xs text-slate-400">Higher is usually faster. Lower improves stop latency on slower devices.</p>
-        </div>
-
-        <div>
-          <label className="mb-2 block text-sm font-medium text-slate-200">Expected average work</label>
-          <div className="rounded-2xl border border-slate-800 bg-slate-950 px-4 py-3 text-sm text-slate-300">
-            <div className="font-semibold text-white">~{formatNumber(expectedAttempts)} attempts</div>
-            <div className="mt-1 text-slate-400">Average for a {byteCount}-byte prefix.</div>
-          </div>
-        </div>
-
-        <div>
-          <label className="mb-2 block text-sm font-medium text-slate-200">Runtime mode</label>
-          <div className="rounded-2xl border border-slate-800 bg-slate-950 px-4 py-3 text-sm text-slate-300">
-            <div className="font-semibold text-white">Native WebCrypto Ed25519</div>
-            <div className="mt-1 text-slate-400">100% client-side. No server calls, no external dependencies.</div>
-          </div>
         </div>
       </div>
 
