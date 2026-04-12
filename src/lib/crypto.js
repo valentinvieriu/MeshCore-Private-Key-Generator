@@ -94,6 +94,26 @@ export async function createMeshCoreCandidateFromKeyPair(keyPair) {
   }
 }
 
+export async function finalizeMeshCoreCandidate(seedHex, rawPublicKeyHex) {
+  const seedBytes = hexToBytes(seedHex)
+  const pubBytes = hexToBytes(rawPublicKeyHex)
+  const jwk = {
+    kty: 'OKP', crv: 'Ed25519',
+    d: base64UrlEncode(seedBytes),
+    x: base64UrlEncode(pubBytes),
+  }
+  const privKey = await crypto.subtle.importKey('jwk', jwk, { name: 'Ed25519' }, true, ['sign'])
+  const pkcs8Buffer = await crypto.subtle.exportKey('pkcs8', privKey)
+  const digest = new Uint8Array(await crypto.subtle.digest('SHA-512', seedBytes))
+  const meshPriv = clampMeshCorePrivateKey(digest)
+  return {
+    seedHex,
+    rawPublicKeyHex,
+    meshcorePrivateHex: bytesToHex(meshPriv),
+    pkcs8Hex: bytesToHex(new Uint8Array(pkcs8Buffer)),
+  }
+}
+
 export async function validateCandidate(candidate) {
   if (candidate.rawPublicKeyHex.length !== 64) throw new Error('Raw public key must be 64 hex chars')
   if (candidate.seedHex.length !== 64) throw new Error('Seed must be 64 hex chars')

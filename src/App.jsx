@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react'
-import { bytesToHex, normalizeHex, isReservedPrefix, validateCandidate } from './lib/crypto'
+import { bytesToHex, normalizeHex, isReservedPrefix, finalizeMeshCoreCandidate, validateCandidate } from './lib/crypto'
 import { WorkerPool } from './lib/workerPool'
 import SearchSettings from './components/SearchSettings'
 import LiveStats from './components/LiveStats'
@@ -128,9 +128,11 @@ export default function App() {
         return
       }
 
-      const validationMessage = await validateCandidate(foundMsg)
+      // Finalize on main thread (worker posted match immediately to stop others fast)
+      const candidate = await finalizeMeshCoreCandidate(foundMsg.seedHex, foundMsg.rawPublicKeyHex)
+      const validationMessage = await validateCandidate(candidate)
       foundRef.current = true
-      setResult({ ...foundMsg, prefix: target, validationMessage })
+      setResult({ ...candidate, prefix: target, validationMessage })
       setRunning(false)
     } catch (err) {
       setError(err.message || 'Unable to start search.')

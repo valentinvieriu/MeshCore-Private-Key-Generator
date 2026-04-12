@@ -59,7 +59,8 @@ export class WorkerPool {
           if (msg.jobId !== jobId) return
           if (msg.type === 'progress') {
             onProgress?.(msg.attemptsDelta || 0)
-          } else if (msg.type === 'found') {
+          } else if (msg.type === 'match') {
+            // Stop all workers immediately, then resolve — finalization happens on main thread
             onFound?.(msg)
             for (const w of this.workers) {
               try { w.postMessage({ type: 'stop', jobId }) } catch { /* ignore */ }

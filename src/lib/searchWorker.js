@@ -6,20 +6,6 @@ function bytesToHex(bytes) {
   return Array.from(bytes, (b) => b.toString(16).padStart(2, '0')).join('')
 }
 
-function base64UrlEncode(bytes) {
-  let binary = ''
-  for (let i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i])
-  return btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '')
-}
-
-function clampMeshCorePrivateKey(bytes64) {
-  const out = new Uint8Array(bytes64)
-  out[0] &= 248
-  out[31] &= 63
-  out[31] |= 64
-  return out
-}
-
 const initPromise = sodium.ready
 
 async function run(jobId, targetHex, batchSize) {
@@ -62,25 +48,13 @@ async function run(jobId, targetHex, batchSize) {
       }
       if (!match) continue
 
-      // Match found — do expensive one-time work
-      const d = base64UrlEncode(seed)
-      const x = base64UrlEncode(publicKey)
-      const jwk = { kty: 'OKP', crv: 'Ed25519', d, x }
-      const privKey = await crypto.subtle.importKey('jwk', jwk, { name: 'Ed25519' }, true, ['sign'])
-      const pkcs8Buffer = await crypto.subtle.exportKey('pkcs8', privKey)
-
-      // MeshCore private key: SHA-512(seed) then clamp
-      const digest = new Uint8Array(await crypto.subtle.digest('SHA-512', seed))
-      const meshPriv = clampMeshCorePrivateKey(digest)
-
+      // Match found — post immediately so pool can stop other workers fast
       activeJobs.delete(jobId)
       postMessage({
-        type: 'found', jobId,
+        type: 'match', jobId,
         attemptsDelta: pendingAttempts,
         seedHex: bytesToHex(seed),
         rawPublicKeyHex: bytesToHex(publicKey),
-        meshcorePrivateHex: bytesToHex(meshPriv),
-        pkcs8Hex: bytesToHex(new Uint8Array(pkcs8Buffer)),
       })
       return
     }
