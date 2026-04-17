@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react'
 import { bytesToHex, normalizeHex, isReservedPrefix, finalizeMeshCoreCandidate, validateCandidate } from './lib/crypto'
-import { pickRandomFunkyPrefixes, createPreviewPublicKeyHex } from './lib/funkyPrefixes'
+import { pickRandomFunkyPrefixes } from './lib/funkyPrefixes'
 import { WorkerPool } from './lib/workerPool'
 import SearchSettings from './components/SearchSettings'
 import LiveStats from './components/LiveStats'
@@ -28,13 +28,6 @@ function describeDifficulty(length) {
   return 'Long vanity prefixes can take a very long time.'
 }
 
-function createHeaderPreviewExamples() {
-  return pickRandomFunkyPrefixes(3).map((prefix) => ({
-    prefix,
-    previewHex: createPreviewPublicKeyHex(prefix),
-  }))
-}
-
 export default function App() {
   const [targetHex, setTargetHex] = useState('')
   const [workerCount, setWorkerCount] = useState(defaultWorkers)
@@ -45,7 +38,7 @@ export default function App() {
   const [totalAttempts, setTotalAttempts] = useState(0)
   const [startTime, setStartTime] = useState(0)
   const [lastElapsedMs, setLastElapsedMs] = useState(0)
-  const [headerPreviewExamples] = useState(() => createHeaderPreviewExamples())
+  const [presetPrefixes, setPresetPrefixes] = useState(() => pickRandomFunkyPrefixes(6))
   const [result, setResult] = useState(null)
 
   const poolRef = useRef(null)
@@ -179,121 +172,95 @@ export default function App() {
     setError('')
   }
 
+  function handlePresetClick(prefix) {
+    setTargetHex(prefix.slice(0, MAX_HEX_LENGTH))
+    setError('')
+  }
+
+  function handleShufflePresets() {
+    setPresetPrefixes(pickRandomFunkyPrefixes(6, { exclude: targetHex }))
+  }
+
   const prefixHexLength = normalizeHex(targetHex).length || 1
   const runState = result ? 'found' : running ? 'running' : totalAttempts > 0 || lastElapsedMs > 0 ? 'stopped' : 'idle'
 
   return (
     <div className="min-h-screen text-slate-100">
-      <div className="mx-auto max-w-6xl px-4 py-4 sm:px-6 lg:px-8 lg:py-5">
-        <header className="mb-5 grid gap-4 xl:grid-cols-[minmax(0,1fr)_360px] xl:items-start">
-          <div className="max-w-3xl">
-            <div className="inline-flex items-center gap-2 rounded-full border border-cyan-400/20 bg-cyan-400/10 px-3 py-1 text-[11px] font-medium uppercase tracking-[0.24em] text-cyan-100">
-              Browser-based MeshCore key generator
-            </div>
-            <h1 className="mt-3 max-w-2xl text-3xl font-semibold tracking-tight text-white sm:text-4xl xl:text-[3.35rem] xl:leading-[1.02]">
-              Generate custom Ed25519 keys for MeshCore
-            </h1>
-            <p className="mt-3 max-w-2xl text-sm leading-6 text-slate-300 sm:text-base">
-              MeshCore uses the first bytes of your public key as a <span className="font-semibold text-white">node identifier</span>.
-              Choose a prefix to pick your node ID, avoid collisions with neighbors, or just get a memorable address.
-            </p>
-            <div className="mt-4 rounded-[22px] border border-white/10 bg-slate-950/40 p-3.5">
-              <div>
-                <div className="text-sm font-medium text-white">Here is how a custom public key can look</div>
-                <p className="mt-1 text-sm leading-6 text-slate-400">Fresh examples built from curated funky prefixes on every page load.</p>
-              </div>
-              <div className="mt-3 flex flex-wrap gap-2.5">
-                {headerPreviewExamples.map((example) => (
-                  <PreviewExampleChip key={example.previewHex} prefix={example.prefix} previewHex={example.previewHex} />
-                ))}
-              </div>
-            </div>
+      <div className="mx-auto max-w-6xl px-4 py-5 sm:px-6 lg:px-8">
+        <header>
+          <div className="inline-flex items-center gap-2 rounded-full border border-cyan-400/20 bg-cyan-400/10 px-3 py-1 text-[11px] font-medium uppercase tracking-[0.24em] text-cyan-100">
+            Browser-based MeshCore key generator
           </div>
-          <aside className="rounded-[26px] border border-white/10 bg-slate-900/70 p-4 shadow-[0_24px_90px_-48px_rgba(14,165,233,0.3)] backdrop-blur">
-            <div className="text-[11px] font-medium uppercase tracking-[0.24em] text-slate-500">Quick facts</div>
-            <div className="mt-3 divide-y divide-white/10">
-              <ContextRow
-                eyebrow="Safe by default"
-                title="Browser-only key generation"
-                body="All processing stays on your device and keys never leave the browser."
-                tone="emerald"
-              />
-              <ContextRow
-                eyebrow="Difficulty"
-                title="Each extra hex char multiplies work by 16"
-                body={describeDifficulty(prefixHexLength)}
-                tone="amber"
-              />
-              <ContextRow
-                eyebrow="Next step"
-                title={running ? 'Search is active' : 'Start with a short prefix'}
-                body={running
-                  ? 'Live attempts and ETA update on the right.'
-                  : 'Start with 1-2 hex chars. Tuning stays hidden until you need it.'}
-                tone="cyan"
-              />
-            </div>
-          </aside>
+          <h1 className="mt-3 text-2xl font-semibold tracking-tight text-white sm:text-3xl xl:text-4xl">
+            Generate vanity Ed25519 keys for MeshCore
+          </h1>
+          <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-400">
+            Pick a public-key prefix and the browser searches until it matches. All crypto stays on your device.
+          </p>
         </header>
 
-        <div className="grid gap-5 xl:grid-cols-[minmax(0,1.15fr)_minmax(320px,0.85fr)]">
-          <SearchSettings
-            targetHex={targetHex}
-            setTargetHex={setTargetHex}
-            maxHexLength={MAX_HEX_LENGTH}
-            workerCount={workerCount}
-            setWorkerCount={setWorkerCount}
-            batchSize={batchSize}
-            setBatchSize={setBatchSize}
-            running={running}
-            libsReady={libsReady}
-            error={error}
-            maxWorkers={hardware}
-            onStart={handleStart}
-            onStop={handleStop}
-            onRandomPrefix={handleRandomPrefix}
-          />
-          <LiveStats
-            runState={runState}
-            running={running}
-            totalAttempts={totalAttempts}
-            startTime={startTime}
-            lastElapsedMs={lastElapsedMs}
-            prefixHexLength={prefixHexLength}
-          />
-        </div>
+        <main className="mt-5 space-y-4">
+          <div className="grid gap-4 xl:grid-cols-[minmax(0,1.15fr)_minmax(320px,0.85fr)] xl:items-start">
+            <SearchSettings
+              targetHex={targetHex}
+              setTargetHex={setTargetHex}
+              maxHexLength={MAX_HEX_LENGTH}
+              workerCount={workerCount}
+              setWorkerCount={setWorkerCount}
+              batchSize={batchSize}
+              setBatchSize={setBatchSize}
+              running={running}
+              libsReady={libsReady}
+              error={error}
+              maxWorkers={hardware}
+              onStart={handleStart}
+              onStop={handleStop}
+              onRandomPrefix={handleRandomPrefix}
+              presetPrefixes={presetPrefixes}
+              onPresetClick={handlePresetClick}
+              onShufflePresets={handleShufflePresets}
+            />
+            <div className="space-y-4">
+              <LiveStats
+                runState={runState}
+                running={running}
+                totalAttempts={totalAttempts}
+                startTime={startTime}
+                lastElapsedMs={lastElapsedMs}
+                prefixHexLength={prefixHexLength}
+              />
+              {!result && <ResultPanel result={null} runState={runState} />}
+            </div>
+          </div>
+          {result && <ResultPanel result={result} runState={runState} />}
+        </main>
 
-        <ResultPanel result={result} runState={runState} />
+        <footer className="mt-8 border-t border-white/10 pt-4">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:gap-6 sm:divide-x sm:divide-white/10">
+            <FooterFact
+              eyebrow="Browser-only"
+              body="Keys never leave your device."
+            />
+            <FooterFact
+              eyebrow="Difficulty"
+              body={describeDifficulty(prefixHexLength)}
+            />
+            <FooterFact
+              eyebrow="Reserved"
+              body="Prefixes starting with 00 or FF are blocked."
+            />
+          </div>
+        </footer>
       </div>
     </div>
   )
 }
 
-function PreviewExampleChip({ prefix, previewHex }) {
+function FooterFact({ eyebrow, body }) {
   return (
-    <div className="min-w-[13rem] flex-1 rounded-[18px] border border-white/10 bg-slate-900/75 px-3 py-2.5">
-      <div className="text-[11px] font-medium uppercase tracking-[0.22em] text-slate-500">Custom ID preview</div>
-      <div className="mt-1 font-mono text-sm text-slate-300">
-        <span className="text-cyan-300">{prefix}</span>
-        {previewHex.slice(prefix.length, 16)}
-        <span className="text-slate-500">...</span>
-      </div>
-    </div>
-  )
-}
-
-function ContextRow({ eyebrow, title, body, tone }) {
-  const tones = {
-    emerald: 'text-emerald-200',
-    amber: 'text-amber-200',
-    cyan: 'text-cyan-200',
-  }
-
-  return (
-    <div className="py-3 first:pt-0 last:pb-0">
-      <div className={`text-[11px] font-medium uppercase tracking-[0.24em] ${tones[tone]}`}>{eyebrow}</div>
-      <div className="mt-1 text-sm font-semibold text-white">{title}</div>
-      <p className="mt-1 text-sm leading-6 text-slate-400">{body}</p>
+    <div className="min-w-0 flex-1 sm:pl-6 sm:first:pl-0">
+      <div className="text-[10px] font-medium uppercase tracking-[0.22em] text-slate-500">{eyebrow}</div>
+      <p className="mt-1 text-xs leading-5 text-slate-400">{body}</p>
     </div>
   )
 }
