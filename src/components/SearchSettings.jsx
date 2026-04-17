@@ -88,7 +88,7 @@ export default function SearchSettings({
         }`}
       >
         <div className="flex flex-wrap items-center gap-x-3 gap-y-2 text-sm">
-          <span className="font-medium text-slate-100">~{formatNumber(expectedAttempts)} average attempts</span>
+          <span className="font-medium text-slate-100">1-in-{formatNumber(expectedAttempts)} per try</span>
           <span className="text-slate-300">{describeTurnaround(safeHexLength)}</span>
           {canStart && <span className="text-cyan-200">Press Enter to start.</span>}
         </div>

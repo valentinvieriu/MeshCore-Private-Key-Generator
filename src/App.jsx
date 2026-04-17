@@ -36,6 +36,8 @@ export default function App() {
   const [libsReady, setLibsReady] = useState(false)
   const [error, setError] = useState('')
   const [totalAttempts, setTotalAttempts] = useState(0)
+  const [cumulativeAttempts, setCumulativeAttempts] = useState(0)
+  const [cumulativePrefix, setCumulativePrefix] = useState('')
   const [startTime, setStartTime] = useState(0)
   const [lastElapsedMs, setLastElapsedMs] = useState(0)
   const [presetPrefixes, setPresetPrefixes] = useState(() => pickRandomFunkyPrefixes(6))
@@ -101,6 +103,7 @@ export default function App() {
         if (pending > 0) {
           pendingAttemptsRef.current = 0
           setTotalAttempts((prev) => prev + pending)
+          setCumulativeAttempts((prev) => prev + pending)
         }
       }, 200)
     } else {
@@ -129,8 +132,13 @@ export default function App() {
       if (!libsReady) throw new Error('WASM Ed25519 crypto is unavailable in this browser.')
       const target = validate()
       const startedAt = performance.now()
+      const sessionContinues = target === cumulativePrefix && !result
       setError('')
       setTotalAttempts(0)
+      if (!sessionContinues) {
+        setCumulativeAttempts(0)
+        setCumulativePrefix(target)
+      }
       setResult(null)
       setLastElapsedMs(0)
       pendingAttemptsRef.current = 0
@@ -157,6 +165,7 @@ export default function App() {
       if (remaining > 0) {
         pendingAttemptsRef.current = 0
         setTotalAttempts((prev) => prev + remaining)
+        setCumulativeAttempts((prev) => prev + remaining)
       }
 
       if (!runningRef.current || !foundMsg) {
@@ -239,19 +248,28 @@ export default function App() {
               onShufflePresets={handleShufflePresets}
             />
             <div className="space-y-4">
-              <LiveStats
-                runState={runState}
-                running={running}
-                totalAttempts={totalAttempts}
-                startTime={startTime}
-                lastElapsedMs={lastElapsedMs}
-                prefixHexLength={prefixHexLength}
-                matchedPrefix={result?.prefix || ''}
-              />
-              {!result && <ResultPanel result={null} runState={runState} />}
+              {result ? (
+                <ResultPanel
+                  result={result}
+                  totalAttempts={totalAttempts}
+                  cumulativeAttempts={cumulativeAttempts}
+                  elapsedMs={lastElapsedMs}
+                  panelRef={resultSectionRef}
+                />
+              ) : (
+                <LiveStats
+                  runState={runState}
+                  running={running}
+                  totalAttempts={totalAttempts}
+                  cumulativeAttempts={cumulativeAttempts}
+                  cumulativePrefix={cumulativePrefix}
+                  startTime={startTime}
+                  lastElapsedMs={lastElapsedMs}
+                  prefixHexLength={prefixHexLength}
+                />
+              )}
             </div>
           </div>
-          {result && <ResultPanel result={result} runState={runState} panelRef={resultSectionRef} />}
         </main>
 
         <footer className="mt-8 border-t border-white/10 pt-4">

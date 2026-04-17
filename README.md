@@ -16,7 +16,8 @@ This tool bridges the gap by generating Ed25519 keys in the browser, extracting 
 - Uses **libsodium WebAssembly in workers** for fast search, with native WebCrypto for PKCS#8 export and validation
 - Generates the **64-byte / 128 hex char** MeshCore private-key format
 - **Parallel search** with prewarmed reusable workers across available CPU cores
-- Supports **1, 2, or 4 byte** vanity prefixes
+- Accepts **1-8 hex char** vanity prefixes (up to 4 bytes), including odd-length nibbles
+- **Curated preset gallery** of leet-speak hex words (`cafe`, `deadbeef`, `c0ffee`, …) you can pick with one click
 - Blocks reserved prefixes (`00`, `FF`)
 - **Validates** every result: key lengths, clamp bits, sign/verify round-trip
 

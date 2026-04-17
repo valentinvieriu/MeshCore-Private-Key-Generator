@@ -9,6 +9,7 @@ MeshCore Private Key Generator — a browser-based tool for generating MeshCore-
 - React 19 + Vite 8 (JSX, no TypeScript)
 - Tailwind CSS 4 (via `@tailwindcss/vite` plugin)
 - ESLint with React hooks and refresh plugins
+- Vitest for unit tests (colocated `*.test.js` files in `src/lib/`)
 
 ## Project structure
 
@@ -19,10 +20,15 @@ src/
   index.css                  # Tailwind import
   lib/
     crypto.js                # Hex/bytes conversion, clamping, prefix matching, candidate creation, validation
+    crypto.test.js           # Vitest coverage for crypto helpers
+    funkyPrefixes.js         # Curated leet-speak hex presets + random pick / preview helpers
+    funkyPrefixes.test.js    # Vitest coverage for prefix curation and preview rendering
+    liveStats.js             # Search-progress math: rate, ETA, find-probability, display formatting
+    liveStats.test.js        # Vitest coverage for liveStats formatters and metrics
     searchWorker.js          # Module worker search loop backed by libsodium-wrappers
     workerPool.js            # Reusable module-worker pool with readiness prewarming
   components/
-    SearchSettings.jsx       # Byte count selector, hex prefix input, worker/batch config, action buttons
+    SearchSettings.jsx       # Hex prefix input, live preview, preset gallery, advanced worker/batch config
     LiveStats.jsx            # Attempts, throughput, elapsed time, ETA, progress bar
     ResultPanel.jsx          # Public key, MeshCore private key (128 hex), seed, PKCS8, copy buttons
 public/
@@ -36,6 +42,8 @@ index.html                   # HTML shell
 - `npm run build` - Production build
 - `npm run lint` - Run ESLint
 - `npm run preview` - Preview production build
+- `npm test` - Run Vitest once
+- `npm run test:watch` - Run Vitest in watch mode
 
 ## Architecture notes
 
@@ -57,8 +65,9 @@ index.html                   # HTML shell
 
 ### Prefix matching
 - Matches against raw 32-byte public key bytes
-- Supports 1, 2, or 4 byte prefixes
+- Accepts 1-8 lowercase hex chars (up to 4 bytes); odd lengths are matched at hex granularity
 - Blocks reserved prefixes starting with `00` or `FF`
+- `funkyPrefixes.js` ships a curated leet-speak preset gallery (e.g. `cafe`, `deadbeef`) surfaced in `SearchSettings`
 
 ### Validation
 - Verifies key lengths, clamp bits, reserved prefix exclusion
