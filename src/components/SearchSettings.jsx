@@ -16,13 +16,29 @@ export default function SearchSettings({
   presetPrefixes, onPresetClick, onShufflePresets,
 }) {
   const [showAdvanced, setShowAdvanced] = useState(false)
-  const hexLength = normalizeHex(targetHex).length
+  const normalizedTarget = normalizeHex(targetHex)
+  const hexLength = normalizedTarget.length
   const safeHexLength = hexLength || 1
   const expectedAttempts = expectedAttemptsForHexLength(safeHexLength)
-  const reserved = isReservedPrefix(targetHex)
+  const reserved = isReservedPrefix(normalizedTarget)
+  const hasTarget = hexLength > 0
+  const canStart = libsReady && !running && hasTarget && !reserved
+  const advancedSummary = `${workerCount} worker${workerCount === 1 ? '' : 's'} · batch ${formatNumber(batchSize)}`
+  const helperMessage = reserved
+    ? 'Prefixes starting with 00 or ff are reserved and blocked.'
+    : hasTarget
+      ? 'The browser keeps searching until the first matching public key is found.'
+      : `Enter 1-${maxHexLength} lowercase hex chars to begin.`
 
   function handleTargetChange(e) {
     setTargetHex(normalizeHex(e.target.value).slice(0, maxHexLength))
+  }
+
+  function handleTargetKeyDown(e) {
+    if (e.key === 'Enter' && canStart) {
+      e.preventDefault()
+      onStart()
+    }
   }
 
   return (
@@ -37,59 +53,89 @@ export default function SearchSettings({
           id="targetHex"
           value={targetHex}
           onChange={handleTargetChange}
+          onKeyDown={handleTargetKeyDown}
           disabled={running}
           maxLength={maxHexLength}
           spellCheck={false}
           autoComplete="off"
           placeholder="Example: ab or c0ffee"
+          aria-describedby="prefixRules prefixHelper"
           className={`w-full rounded-[22px] border bg-slate-950/90 px-4 py-4 font-mono text-xl tracking-[0.18em] text-slate-100 outline-none transition placeholder:tracking-normal placeholder:text-slate-500 focus:border-cyan-400 disabled:opacity-50 ${
             reserved ? 'border-amber-400/50 focus:border-amber-300' : 'border-white/10'
           }`}
         />
       </div>
 
+      <div id="prefixRules" className="mt-3 flex flex-wrap items-center gap-2">
+        <RulePill>1-{maxHexLength} hex chars</RulePill>
+        <RulePill>lowercase only</RulePill>
+        <RulePill>00 / ff blocked</RulePill>
+        <span className={`ml-auto rounded-full border px-3 py-1 text-xs font-medium ${
+          hasTarget
+            ? 'border-cyan-400/25 bg-cyan-400/10 text-cyan-100'
+            : 'border-white/10 bg-slate-950/60 text-slate-400'
+        }`}>
+          {hexLength}/{maxHexLength} chars
+        </span>
+      </div>
+
       <LivePrefixPreview targetHex={targetHex} />
 
-      <div className="mt-3 flex flex-wrap items-center gap-2">
-        <span className="inline-flex items-center rounded-full border border-cyan-400/20 bg-cyan-400/10 px-3 py-1 text-xs font-medium text-cyan-100">
-          ~{formatNumber(expectedAttempts)} average attempts
-        </span>
-        <span className="text-sm text-slate-300">{describeTurnaround(safeHexLength)}</span>
-        <span className="text-xs uppercase tracking-[0.2em] text-slate-500">
-          {safeHexLength} hex char{safeHexLength !== 1 ? 's' : ''}
-        </span>
-        <div className="ml-auto flex flex-wrap items-center gap-2">
-          <button
-            type="button"
-            onClick={onStart}
-            disabled={running || !libsReady}
-            className={`rounded-[18px] bg-cyan-400 px-5 py-2.5 text-sm font-semibold text-slate-950 shadow-[0_18px_42px_-22px_rgba(34,211,238,0.9)] transition hover:bg-cyan-300 ${
-              running || !libsReady ? 'cursor-not-allowed opacity-60' : ''
-            }`}
-          >
-            {libsReady ? 'Start search' : 'Loading crypto...'}
-          </button>
-          <button
-            type="button"
-            onClick={onStop}
-            disabled={!running}
-            className={`rounded-[18px] border border-white/10 bg-slate-950/60 px-4 py-2.5 text-sm font-semibold transition ${
-              running ? 'text-slate-100 hover:border-cyan-400/30 hover:bg-slate-900' : 'cursor-not-allowed text-slate-500 opacity-60'
-            }`}
-          >
-            Stop
-          </button>
-          <button
-            type="button"
-            onClick={onRandomPrefix}
-            disabled={running}
-            className={`rounded-[18px] border border-white/10 bg-slate-950/60 px-4 py-2.5 text-sm font-semibold transition ${
-              running ? 'cursor-not-allowed text-slate-500 opacity-60' : 'text-slate-200 hover:border-cyan-400/30 hover:bg-slate-900'
-            }`}
-          >
-            Randomize
-          </button>
+      <div
+        id="prefixHelper"
+        className={`mt-3 rounded-[18px] border px-4 py-3 ${
+          reserved ? 'border-amber-400/25 bg-amber-400/8' : 'border-white/10 bg-slate-950/55'
+        }`}
+      >
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-2 text-sm">
+          <span className="font-medium text-slate-100">~{formatNumber(expectedAttempts)} average attempts</span>
+          <span className="text-slate-300">{describeTurnaround(safeHexLength)}</span>
+          {canStart && <span className="text-cyan-200">Press Enter to start.</span>}
         </div>
+        <p className={`mt-2 text-xs leading-5 ${reserved ? 'text-amber-100' : 'text-slate-400'}`}>
+          {helperMessage}
+        </p>
+      </div>
+
+      <div className="mt-4 flex flex-wrap items-center gap-2">
+        {!running && (
+          <>
+            <button
+              type="button"
+              onClick={onStart}
+              disabled={!canStart}
+              className={`rounded-[18px] bg-cyan-400 px-5 py-2.5 text-sm font-semibold text-slate-950 shadow-[0_18px_42px_-22px_rgba(34,211,238,0.9)] transition hover:bg-cyan-300 ${
+                !canStart ? 'cursor-not-allowed opacity-60' : ''
+              }`}
+            >
+              {libsReady ? 'Start search' : 'Loading crypto...'}
+            </button>
+            <button
+              type="button"
+              onClick={onRandomPrefix}
+              className="rounded-[18px] border border-white/10 bg-slate-950/60 px-4 py-2.5 text-sm font-semibold text-slate-200 transition hover:border-cyan-400/30 hover:bg-slate-900"
+            >
+              Randomize
+            </button>
+            <span className="ml-auto text-xs uppercase tracking-[0.2em] text-slate-500">
+              {safeHexLength} hex char{safeHexLength !== 1 ? 's' : ''}
+            </span>
+          </>
+        )}
+        {running && (
+          <>
+            <button
+              type="button"
+              onClick={onStop}
+              className="rounded-[18px] border border-cyan-400/30 bg-cyan-400/10 px-4 py-2.5 text-sm font-semibold text-cyan-100 transition hover:bg-cyan-400/15"
+            >
+              Stop search
+            </button>
+            <span className="text-sm text-slate-300">
+              Searching across <span className="font-medium text-slate-100">{workerCount}</span> worker{workerCount === 1 ? '' : 's'}.
+            </span>
+          </>
+        )}
       </div>
 
       <div className="mt-5 flex items-center justify-between">
@@ -117,19 +163,22 @@ export default function SearchSettings({
         ))}
       </div>
 
-      <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-white/10 pt-3 text-sm">
-        <p className={reserved ? 'text-amber-100' : 'text-slate-400'}>
-          {reserved
-            ? <>Prefixes starting with <span className="font-semibold">00</span> or <span className="font-semibold">FF</span> are reserved and blocked.</>
-            : 'Use lowercase hex only. For a fast test run, start short or click a preset above.'}
-        </p>
+      <div className="mt-4 border-t border-white/10 pt-3">
         <button
           type="button"
           aria-expanded={showAdvanced}
           onClick={() => setShowAdvanced((prev) => !prev)}
-          className="font-medium text-cyan-200 transition hover:text-white"
+          className="flex w-full flex-wrap items-center justify-between gap-3 rounded-[18px] border border-white/10 bg-slate-950/45 px-4 py-3 text-left transition hover:border-cyan-400/25 hover:bg-slate-950/60"
         >
-          {showAdvanced ? 'Hide advanced settings' : 'Show advanced settings'}
+          <div>
+            <div className="text-sm font-medium text-slate-100">Advanced settings</div>
+            <p className="mt-1 text-xs leading-5 text-slate-400">
+              {advancedSummary}. Adjust only if you want a different speed versus responsiveness tradeoff.
+            </p>
+          </div>
+          <span className="text-sm font-medium text-cyan-200">
+            {showAdvanced ? 'Hide' : 'Show'}
+          </span>
         </button>
       </div>
 
@@ -208,10 +257,10 @@ function PresetGalleryCard({ prefix, selected, disabled, onClick }) {
   const previewHex = useMemo(() => createPreviewPublicKeyHex(prefix), [prefix])
   const baseClasses = 'flex flex-col gap-1 rounded-[18px] border px-3 py-2.5 text-left transition'
   const stateClasses = disabled
-    ? 'cursor-not-allowed border-white/10 bg-slate-950/40 opacity-60'
+    ? 'cursor-not-allowed border-white/10 bg-slate-950/25 opacity-60'
     : selected
-      ? 'border-cyan-400/40 bg-cyan-400/15 ring-1 ring-cyan-400/30'
-      : 'border-white/10 bg-slate-950/60 hover:border-cyan-400/30 hover:bg-slate-900'
+      ? 'border-cyan-400/45 bg-cyan-400/12 shadow-[0_18px_48px_-34px_rgba(34,211,238,0.8)] ring-1 ring-cyan-400/35'
+      : 'border-white/10 bg-slate-950/35 hover:border-cyan-400/25 hover:bg-slate-950/55'
 
   return (
     <button type="button" onClick={onClick} disabled={disabled} className={`${baseClasses} ${stateClasses}`}>
@@ -235,4 +284,12 @@ function StatusBadge({ running, libsReady }) {
     return <span className="rounded-full border border-amber-400/30 bg-amber-400/10 px-3 py-1 text-xs font-medium text-amber-100">Loading crypto</span>
   }
   return <span className="rounded-full border border-emerald-500/30 bg-emerald-500/10 px-3 py-1 text-xs font-medium text-emerald-100">Ready</span>
+}
+
+function RulePill({ children }) {
+  return (
+    <span className="rounded-full border border-white/10 bg-slate-950/60 px-3 py-1 text-xs font-medium text-slate-400">
+      {children}
+    </span>
+  )
 }

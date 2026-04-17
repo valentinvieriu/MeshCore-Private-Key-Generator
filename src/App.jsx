@@ -46,6 +46,7 @@ export default function App() {
   const pendingAttemptsRef = useRef(0)
   const flushRef = useRef(null)
   const startTimeRef = useRef(0)
+  const resultSectionRef = useRef(null)
 
   // Keep runningRef in sync
   useEffect(() => { runningRef.current = running }, [running])
@@ -74,6 +75,23 @@ export default function App() {
 
     return () => pool.destroy()
   }, [])
+
+  useEffect(() => {
+    if (!result || !resultSectionRef.current) return
+
+    const frameId = requestAnimationFrame(() => {
+      const el = resultSectionRef.current
+      if (!el) return
+      el.focus({ preventScroll: true })
+      const rect = el.getBoundingClientRect()
+      const fullyVisible = rect.top >= 0 && rect.bottom <= window.innerHeight
+      if (!fullyVisible) {
+        el.scrollIntoView({ behavior: 'smooth', block: 'start' })
+      }
+    })
+
+    return () => cancelAnimationFrame(frameId)
+  }, [result])
 
   // Flush accumulated progress to React state on a fixed cadence
   useEffect(() => {
@@ -228,11 +246,12 @@ export default function App() {
                 startTime={startTime}
                 lastElapsedMs={lastElapsedMs}
                 prefixHexLength={prefixHexLength}
+                matchedPrefix={result?.prefix || ''}
               />
               {!result && <ResultPanel result={null} runState={runState} />}
             </div>
           </div>
-          {result && <ResultPanel result={result} runState={runState} />}
+          {result && <ResultPanel result={result} runState={runState} panelRef={resultSectionRef} />}
         </main>
 
         <footer className="mt-8 border-t border-white/10 pt-4">
