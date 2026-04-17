@@ -75,7 +75,7 @@ export default function SearchSettings({
             onChange={(e) => setWorkerCount(Math.max(1, Math.min(maxWorkers, Number(e.target.value) || 1)))}
             className="w-full rounded-2xl border border-slate-700 bg-slate-950 px-4 py-3 text-base outline-none ring-0 transition focus:border-cyan-400 disabled:opacity-50"
           />
-          <p className="mt-2 text-xs text-slate-400">Defaults to available CPU threads minus one, capped for responsiveness.</p>
+          <p className="mt-2 text-xs text-slate-400">Defaults to available CPU threads minus one so the UI keeps a core free.</p>
         </div>
 
         <div>

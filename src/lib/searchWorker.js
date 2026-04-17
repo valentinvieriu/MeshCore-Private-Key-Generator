@@ -1,12 +1,13 @@
 import sodium from 'libsodium-wrappers'
 
 const activeJobs = new Set()
+const initPromise = sodium.ready.then(() => {
+  postMessage({ type: 'ready' })
+})
 
 function bytesToHex(bytes) {
   return Array.from(bytes, (b) => b.toString(16).padStart(2, '0')).join('')
 }
-
-const initPromise = sodium.ready
 
 async function run(jobId, targetHex, batchSize) {
   await initPromise

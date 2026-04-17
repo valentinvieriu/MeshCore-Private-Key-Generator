@@ -2,7 +2,7 @@
 
 ## Project overview
 
-MeshCore Private Key Generator — a browser-based tool for generating MeshCore-compatible Ed25519 private keys (64-byte / 128-hex format) with optional vanity public-key prefix matching. Runs entirely client-side using native WebCrypto.
+MeshCore Private Key Generator — a browser-based tool for generating MeshCore-compatible Ed25519 private keys (64-byte / 128-hex format) with optional vanity public-key prefix matching. Runs entirely client-side using libsodium WebAssembly in workers for the search loop and native WebCrypto for export/validation.
 
 ## Tech stack
 
@@ -19,7 +19,8 @@ src/
   index.css                  # Tailwind import
   lib/
     crypto.js                # Hex/bytes conversion, clamping, prefix matching, candidate creation, validation
-    workerPool.js            # WorkerPool class with blob URL inline workers
+    searchWorker.js          # Module worker search loop backed by libsodium-wrappers
+    workerPool.js            # Reusable module-worker pool with readiness prewarming
   components/
     SearchSettings.jsx       # Byte count selector, hex prefix input, worker/batch config, action buttons
     LiveStats.jsx            # Attempts, throughput, elapsed time, ETA, progress bar
@@ -48,9 +49,10 @@ index.html                   # HTML shell
 4. Final key: `[32 clamped bytes][32 remaining bytes]` = 128 hex chars
 
 ### Worker pool
-- Uses blob URL inline workers (self-contained script, no module bundling needed)
-- Workers generate Ed25519 keys via `crypto.subtle.generateKey`, export JWK to extract seed
-- Each worker runs batched key generation, posts progress updates and match results
+- Uses reusable module workers (`src/lib/searchWorker.js`) bundled by Vite
+- Workers prewarm `libsodium-wrappers` on initialization so the first search starts hot
+- Each worker runs a synchronous batched search loop over random 32-byte seeds and posts progress updates plus immediate match results
+- Match finalization, PKCS#8 export, and validation stay on the main thread via WebCrypto
 - Pool is persistent and reused between search runs
 
 ### Prefix matching

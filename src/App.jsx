@@ -8,7 +8,7 @@ import ResultPanel from './components/ResultPanel'
 const DEFAULT_BATCH_SIZE = 512
 const MAX_HEX_LENGTH = 8
 const hardware = navigator.hardwareConcurrency || 4
-const defaultWorkers = Math.max(1, Math.min(8, hardware - 1 || 1))
+const defaultWorkers = Math.max(1, hardware - 1)
 
 function randomHexPrefix(length) {
   const bytes = crypto.getRandomValues(new Uint8Array(Math.ceil(length / 2)))

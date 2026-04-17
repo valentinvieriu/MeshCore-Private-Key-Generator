@@ -13,23 +13,23 @@ This tool bridges the gap by generating Ed25519 keys in the browser, extracting 
 ## Features
 
 - Runs entirely **client-side** — no server, no key upload
-- Uses **native WebCrypto Ed25519** — no external crypto libraries
+- Uses **libsodium WebAssembly in workers** for fast search, with native WebCrypto for PKCS#8 export and validation
 - Generates the **64-byte / 128 hex char** MeshCore private-key format
-- **Parallel search** with a reusable worker pool across available CPU cores
+- **Parallel search** with prewarmed reusable workers across available CPU cores
 - Supports **1, 2, or 4 byte** vanity prefixes
 - Blocks reserved prefixes (`00`, `FF`)
 - **Validates** every result: key lengths, clamp bits, sign/verify round-trip
-- Built-in **self-test suite** that runs on startup
 
 ## MeshCore key format
 
 1. Generate a **32-byte random Ed25519 seed**
-2. Compute **SHA-512(seed)** → 64 bytes
-3. Apply Ed25519 clamp to first 32 bytes:
+2. Use the seed to derive an Ed25519 public key during the vanity search
+3. Compute **SHA-512(seed)** → 64 bytes
+4. Apply Ed25519 clamp to first 32 bytes:
    - `byte[0] &= 248`
    - `byte[31] &= 63`
    - `byte[31] |= 64`
-4. Final key: `[32 clamped bytes][32 remaining SHA-512 bytes]` = **128 hex characters**
+5. Final key: `[32 clamped bytes][32 remaining SHA-512 bytes]` = **128 hex characters**
 
 ## Expected search cost
 

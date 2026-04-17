@@ -5,23 +5,54 @@ export class WorkerPool {
     this.workers = []
     this.workerCount = 0
     this.activeJobId = null
+    this.initPromise = null
   }
 
   async init(workerCount) {
-    if (this.workers.length === workerCount) return
+    if (this.workers.length === workerCount) {
+      await this.initPromise
+      return
+    }
     this.destroy()
     this.workerCount = workerCount
+    const readyPromises = []
     for (let i = 0; i < workerCount; i++) {
-      this.workers.push(
-        new Worker(new URL('./searchWorker.js', import.meta.url), { type: 'module' })
-      )
+      const worker = new Worker(new URL('./searchWorker.js', import.meta.url), { type: 'module' })
+      this.workers.push(worker)
+      readyPromises.push(new Promise((resolve, reject) => {
+        const handleMessage = (event) => {
+          const msg = event.data || {}
+          if (msg.type !== 'ready') return
+          cleanup()
+          resolve()
+        }
+        const handleError = (err) => {
+          cleanup()
+          reject(err instanceof Error ? err : new Error('Worker failed to initialize'))
+        }
+        const cleanup = () => {
+          worker.removeEventListener('message', handleMessage)
+          worker.removeEventListener('error', handleError)
+        }
+        worker.addEventListener('message', handleMessage)
+        worker.addEventListener('error', handleError)
+      }))
+    }
+    this.initPromise = Promise.all(readyPromises)
+    try {
+      await this.initPromise
+    } catch (error) {
+      this.destroy()
+      throw error
     }
   }
 
   destroy() {
     for (const worker of this.workers) worker.terminate()
     this.workers = []
+    this.workerCount = 0
     this.activeJobId = null
+    this.initPromise = null
   }
 
   stop() {
@@ -33,6 +64,7 @@ export class WorkerPool {
   }
 
   async runSearch({ targetHex, batchSize, onProgress, onFound }) {
+    await this.initPromise
     const jobId = nextJobId++
     this.activeJobId = jobId
     return new Promise((resolve, reject) => {
