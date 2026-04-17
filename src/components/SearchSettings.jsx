@@ -42,8 +42,8 @@ export default function SearchSettings({
   }
 
   return (
-    <section className="rounded-[30px] border border-white/10 bg-slate-900/75 p-5 shadow-[0_24px_90px_-52px_rgba(14,165,233,0.45)] backdrop-blur xl:p-6">
-      <div className="flex flex-wrap items-end justify-between gap-3">
+    <section className="rounded-3xl border border-white/10 bg-slate-900/75 p-4 shadow-[0_24px_90px_-52px_rgba(14,165,233,0.45)] backdrop-blur sm:rounded-[30px] sm:p-5 xl:p-6">
+      <div className="flex flex-wrap items-center justify-between gap-2">
         <label htmlFor="targetHex" className="text-sm font-medium text-slate-200">Desired public key prefix</label>
         <StatusBadge running={running} libsReady={libsReady} />
       </div>
@@ -58,19 +58,20 @@ export default function SearchSettings({
           maxLength={maxHexLength}
           spellCheck={false}
           autoComplete="off"
+          inputMode="text"
           placeholder="Example: ab or c0ffee"
           aria-describedby="prefixRules prefixHelper"
-          className={`w-full rounded-[22px] border bg-slate-950/90 px-4 py-4 font-mono text-xl tracking-[0.18em] text-slate-100 outline-none transition placeholder:tracking-normal placeholder:text-slate-500 focus:border-cyan-400 disabled:opacity-50 ${
+          className={`w-full rounded-2xl border bg-slate-950/90 px-3.5 py-3 font-mono text-lg tracking-[0.12em] text-slate-100 outline-none transition placeholder:tracking-normal placeholder:text-slate-500 focus:border-cyan-400 disabled:opacity-50 sm:rounded-[22px] sm:px-4 sm:py-4 sm:text-xl sm:tracking-[0.18em] ${
             reserved ? 'border-amber-400/50 focus:border-amber-300' : 'border-white/10'
           }`}
         />
       </div>
 
-      <div id="prefixRules" className="mt-3 flex flex-wrap items-center gap-2">
+      <div id="prefixRules" className="mt-3 flex flex-wrap items-center gap-1.5 sm:gap-2">
         <RulePill>1-{maxHexLength} hex chars</RulePill>
         <RulePill>lowercase only</RulePill>
         <RulePill>00 / ff blocked</RulePill>
-        <span className={`ml-auto rounded-full border px-3 py-1 text-xs font-medium ${
+        <span className={`ml-auto rounded-full border px-2.5 py-1 text-[11px] font-medium sm:px-3 sm:text-xs ${
           hasTarget
             ? 'border-cyan-400/25 bg-cyan-400/10 text-cyan-100'
             : 'border-white/10 bg-slate-950/60 text-slate-400'
@@ -104,7 +105,7 @@ export default function SearchSettings({
               type="button"
               onClick={onStart}
               disabled={!canStart}
-              className={`rounded-[18px] bg-cyan-400 px-5 py-2.5 text-sm font-semibold text-slate-950 shadow-[0_18px_42px_-22px_rgba(34,211,238,0.9)] transition hover:bg-cyan-300 ${
+              className={`w-full rounded-[18px] bg-cyan-400 px-5 py-3 text-sm font-semibold text-slate-950 shadow-[0_18px_42px_-22px_rgba(34,211,238,0.9)] transition hover:bg-cyan-300 sm:w-auto sm:py-2.5 ${
                 !canStart ? 'cursor-not-allowed opacity-60' : ''
               }`}
             >
@@ -113,11 +114,11 @@ export default function SearchSettings({
             <button
               type="button"
               onClick={onRandomPrefix}
-              className="rounded-[18px] border border-white/10 bg-slate-950/60 px-4 py-2.5 text-sm font-semibold text-slate-200 transition hover:border-cyan-400/30 hover:bg-slate-900"
+              className="flex-1 rounded-[18px] border border-white/10 bg-slate-950/60 px-4 py-2.5 text-sm font-semibold text-slate-200 transition hover:border-cyan-400/30 hover:bg-slate-900 sm:flex-none"
             >
               Randomize
             </button>
-            <span className="ml-auto text-xs uppercase tracking-[0.2em] text-slate-500">
+            <span className="ml-auto hidden text-xs uppercase tracking-[0.2em] text-slate-500 sm:inline">
               {safeHexLength} hex char{safeHexLength !== 1 ? 's' : ''}
             </span>
           </>
@@ -127,7 +128,7 @@ export default function SearchSettings({
             <button
               type="button"
               onClick={onStop}
-              className="rounded-[18px] border border-cyan-400/30 bg-cyan-400/10 px-4 py-2.5 text-sm font-semibold text-cyan-100 transition hover:bg-cyan-400/15"
+              className="w-full rounded-[18px] border border-cyan-400/30 bg-cyan-400/10 px-4 py-3 text-sm font-semibold text-cyan-100 transition hover:bg-cyan-400/15 sm:w-auto sm:py-2.5"
             >
               Stop search
             </button>
@@ -183,7 +184,7 @@ export default function SearchSettings({
       </div>
 
       {showAdvanced && (
-        <div className="mt-3 grid gap-4 rounded-[22px] border border-white/10 bg-slate-950/45 p-4 md:grid-cols-2">
+        <div className="mt-3 grid gap-4 rounded-[22px] border border-white/10 bg-slate-950/45 p-3.5 sm:grid-cols-2 sm:p-4">
           <div>
             <label htmlFor="workerCount" className="mb-2 block text-sm font-medium text-slate-200">Parallel workers</label>
             <input

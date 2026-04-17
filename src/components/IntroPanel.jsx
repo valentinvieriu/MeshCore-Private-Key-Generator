@@ -4,7 +4,7 @@ const ATTEMPTS_TABLE = [1, 2, 3, 4, 5, 6, 7, 8]
 
 export default function IntroPanel({ prefixHexLength }) {
   return (
-    <section className="rounded-[30px] border border-white/10 bg-slate-900/65 p-5 shadow-[0_24px_90px_-56px_rgba(15,23,42,0.85)] backdrop-blur">
+    <section className="rounded-3xl border border-white/10 bg-slate-900/65 p-4 shadow-[0_24px_90px_-56px_rgba(15,23,42,0.85)] backdrop-blur sm:rounded-[30px] sm:p-5">
       <div className="flex items-center justify-between gap-3">
         <div className="text-[10px] font-medium uppercase tracking-[0.24em] text-cyan-200">How this works</div>
         <span className="rounded-full border border-white/10 bg-slate-950/60 px-3 py-1 text-xs font-medium text-slate-300">

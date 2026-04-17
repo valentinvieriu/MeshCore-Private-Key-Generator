@@ -10,14 +10,14 @@ export default function ResultPanel({ result, totalAttempts = 0, cumulativeAttem
     <section
       ref={panelRef}
       tabIndex={-1}
-      className="rounded-[30px] border border-white/10 bg-slate-900/70 p-5 shadow-[0_24px_90px_-56px_rgba(15,23,42,0.85)] backdrop-blur outline-none space-y-4"
+      className="rounded-3xl border border-white/10 bg-slate-900/70 p-4 shadow-[0_24px_90px_-56px_rgba(15,23,42,0.85)] backdrop-blur outline-none space-y-4 sm:rounded-[30px] sm:p-5"
     >
-      <div className="rounded-[26px] border border-white/10 bg-slate-950/65 p-5">
-        <div className="flex items-center justify-between gap-3">
-          <div className="text-xs uppercase tracking-[0.22em] text-slate-500">Matched prefix</div>
-          <span className="rounded-full border border-emerald-500/40 bg-emerald-500/15 px-3 py-1 text-xs font-medium text-emerald-100">Match found</span>
+      <div className="rounded-2xl border border-white/10 bg-slate-950/65 p-4 sm:rounded-[26px] sm:p-5">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <div className="text-[10px] uppercase tracking-[0.2em] text-slate-500 sm:text-xs sm:tracking-[0.22em]">Matched prefix</div>
+          <span className="rounded-full border border-emerald-500/40 bg-emerald-500/15 px-2.5 py-1 text-[11px] font-medium text-emerald-100 sm:px-3 sm:text-xs">Match found</span>
         </div>
-        <div className="mt-2 font-mono text-4xl font-semibold tracking-tight text-cyan-200">{result.prefix}</div>
+        <div className="mt-2 break-all font-mono text-3xl font-semibold tracking-tight text-cyan-200 sm:text-4xl">{result.prefix}</div>
         <p className="mt-3 text-sm leading-6 text-slate-400">
           Found in <span className="text-slate-100">{formatNumber(totalAttempts)}</span> attempts · <span className="text-slate-100">{formatDuration(elapsedMs)}</span>
         </p>
@@ -37,7 +37,7 @@ export default function ResultPanel({ result, totalAttempts = 0, cumulativeAttem
       />
 
       <div className="rounded-[20px] border border-white/10 bg-slate-900/70 p-3">
-        <div className="mb-2 flex items-center justify-between gap-3">
+        <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
           <label className="text-[10px] uppercase tracking-[0.22em] text-slate-500">Raw public key</label>
           <CopyButton
             value={result.rawPublicKeyHex}
@@ -45,7 +45,7 @@ export default function ResultPanel({ result, totalAttempts = 0, cumulativeAttem
             copiedLabel="Copied"
           />
         </div>
-        <div className="break-all font-mono text-xs leading-6 text-slate-200">
+        <div className="break-all font-mono text-[11px] leading-6 text-slate-200 sm:text-xs">
           <span className="rounded bg-cyan-400/15 px-0.5 text-cyan-300">{result.rawPublicKeyHex.slice(0, result.prefix.length)}</span>
           {result.rawPublicKeyHex.slice(result.prefix.length)}
         </div>
@@ -64,12 +64,12 @@ export default function ResultPanel({ result, totalAttempts = 0, cumulativeAttem
             return (
               <div
                 key={bytes}
-                className={`flex items-center gap-3 rounded-2xl border px-3 py-2 ${
+                className={`flex items-center gap-2.5 rounded-2xl border px-3 py-2 sm:gap-3 ${
                   isFullyMatched ? 'border-cyan-500/30 bg-cyan-500/10' : 'border-white/10 bg-slate-900/70'
                 }`}
               >
-                <span className="w-14 shrink-0 text-xs text-slate-400">{bytes} byte{bytes > 1 ? 's' : ''}</span>
-                <span className="font-mono text-xs font-semibold">
+                <span className="w-12 shrink-0 text-[11px] text-slate-400 sm:w-14 sm:text-xs">{bytes} byte{bytes > 1 ? 's' : ''}</span>
+                <span className="break-all font-mono text-xs font-semibold">
                   {isFullyMatched || isPartiallyMatched ? (
                     <>
                       <span className="text-cyan-300">{id.slice(0, Math.min(prefixLen, hexLen))}</span>
@@ -109,12 +109,12 @@ function ExportField({
   copiedLabel,
 }) {
   return (
-    <div className={`rounded-[22px] border p-4 ${
+    <div className={`rounded-2xl border p-3 sm:rounded-[22px] sm:p-4 ${
       emphasize ? 'border-cyan-400/20 bg-slate-950/75 shadow-[0_18px_50px_-36px_rgba(34,211,238,0.8)]' : 'border-white/10 bg-slate-950/70'
     }`}>
-      <div className="mb-3 flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
-        <div>
-          <label className="text-xs uppercase tracking-[0.22em] text-slate-500">{label}</label>
+      <div className="mb-3 flex flex-wrap items-start justify-between gap-2">
+        <div className="min-w-0">
+          <label className="text-[10px] uppercase tracking-[0.2em] text-slate-500 sm:text-xs sm:tracking-[0.22em]">{label}</label>
           {helper && <p className="mt-1 text-xs leading-5 text-slate-400">{helper}</p>}
         </div>
         <CopyButton
@@ -127,7 +127,7 @@ function ExportField({
       <textarea
         readOnly
         value={value || ''}
-        className={`${minHeightClass} w-full resize-y rounded-[18px] border px-3 py-2 font-mono text-xs leading-6 outline-none ${
+        className={`${minHeightClass} w-full resize-y rounded-2xl border px-3 py-2 font-mono text-[11px] leading-6 outline-none sm:rounded-[18px] sm:text-xs ${
           emphasize
             ? 'border-cyan-400/20 bg-slate-900/90 text-slate-100'
             : 'border-white/10 bg-slate-900/80 text-slate-100'

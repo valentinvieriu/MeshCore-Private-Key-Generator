@@ -213,12 +213,12 @@ export default function App() {
 
   return (
     <div className="min-h-screen text-slate-100">
-      <div className="mx-auto max-w-6xl px-4 py-5 sm:px-6 lg:px-8">
+      <div className="mx-auto max-w-6xl px-3 py-4 sm:px-6 sm:py-5 lg:px-8">
         <header>
-          <div className="inline-flex items-center gap-2 rounded-full border border-cyan-400/20 bg-cyan-400/10 px-3 py-1 text-[11px] font-medium uppercase tracking-[0.24em] text-cyan-100">
+          <div className="inline-flex items-center gap-2 rounded-full border border-cyan-400/20 bg-cyan-400/10 px-2.5 py-1 text-[10px] font-medium uppercase tracking-[0.2em] text-cyan-100 sm:px-3 sm:text-[11px] sm:tracking-[0.24em]">
             Browser-based MeshCore key generator
           </div>
-          <h1 className="mt-3 text-2xl font-semibold tracking-tight text-white sm:text-3xl xl:text-4xl">
+          <h1 className="mt-3 text-xl font-semibold tracking-tight text-white sm:text-3xl xl:text-4xl">
             Generate vanity Ed25519 keys for MeshCore
           </h1>
           <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-400">
@@ -226,28 +226,30 @@ export default function App() {
           </p>
         </header>
 
-        <main className="mt-5 space-y-4">
-          <div className="grid gap-4 xl:grid-cols-[minmax(0,1.15fr)_minmax(320px,0.85fr)] xl:items-start">
-            <SearchSettings
-              targetHex={targetHex}
-              setTargetHex={setTargetHex}
-              maxHexLength={MAX_HEX_LENGTH}
-              workerCount={workerCount}
-              setWorkerCount={setWorkerCount}
-              batchSize={batchSize}
-              setBatchSize={setBatchSize}
-              running={running}
-              libsReady={libsReady}
-              error={error}
-              maxWorkers={hardware}
-              onStart={handleStart}
-              onStop={handleStop}
-              onRandomPrefix={handleRandomPrefix}
-              presetPrefixes={presetPrefixes}
-              onPresetClick={handlePresetClick}
-              onShufflePresets={handleShufflePresets}
-            />
-            <div className="space-y-4">
+        <main className="mt-4 space-y-4 sm:mt-5">
+          <div className="grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,1.15fr)_minmax(320px,0.85fr)] xl:items-start">
+            <div className="min-w-0">
+              <SearchSettings
+                targetHex={targetHex}
+                setTargetHex={setTargetHex}
+                maxHexLength={MAX_HEX_LENGTH}
+                workerCount={workerCount}
+                setWorkerCount={setWorkerCount}
+                batchSize={batchSize}
+                setBatchSize={setBatchSize}
+                running={running}
+                libsReady={libsReady}
+                error={error}
+                maxWorkers={hardware}
+                onStart={handleStart}
+                onStop={handleStop}
+                onRandomPrefix={handleRandomPrefix}
+                presetPrefixes={presetPrefixes}
+                onPresetClick={handlePresetClick}
+                onShufflePresets={handleShufflePresets}
+              />
+            </div>
+            <div className="min-w-0 space-y-4">
               {result ? (
                 <ResultPanel
                   result={result}
@@ -272,7 +274,7 @@ export default function App() {
           </div>
         </main>
 
-        <footer className="mt-8 border-t border-white/10 pt-4">
+        <footer className="mt-6 border-t border-white/10 pt-4 sm:mt-8">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:gap-6 sm:divide-x sm:divide-white/10">
             <FooterFact
               eyebrow="Browser-only"

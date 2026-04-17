@@ -13,6 +13,7 @@ html {
 
 body {
   min-height: 100vh;
+  overflow-x: hidden;
   background:
     radial-gradient(circle at top, rgba(34, 211, 238, 0.08), transparent 30%),
     linear-gradient(180deg, rgba(15, 23, 42, 0.95) 0%, rgba(2, 6, 23, 1) 40%, rgba(2, 6, 23, 1) 100%);

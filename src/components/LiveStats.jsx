@@ -79,12 +79,12 @@ export default function LiveStats({
   ]
 
   return (
-    <section className="rounded-[30px] border border-white/10 bg-slate-900/70 p-5 shadow-[0_24px_90px_-56px_rgba(15,23,42,0.85)] backdrop-blur">
+    <section className="rounded-3xl border border-white/10 bg-slate-900/70 p-4 shadow-[0_24px_90px_-56px_rgba(15,23,42,0.85)] backdrop-blur sm:rounded-[30px] sm:p-5">
       <div className="flex items-center justify-end">
         <RunBadge runState={runState} />
       </div>
 
-      <div className="mt-3 grid gap-3 sm:grid-cols-3">
+      <div className="mt-3 grid grid-cols-3 gap-2 sm:gap-3">
         {statItems.map((item) => (
           <StatCard
             key={item.label}
@@ -126,8 +126,8 @@ function SearchCohortIndicator({ metrics, cumulativeAttempts, cumulativePrefix, 
   const prefixLabel = cumulativePrefix ? `for ${cumulativePrefix}` : ''
 
   return (
-    <div className="mt-4 overflow-hidden rounded-[24px] border border-white/10 bg-slate-950/70">
-      <div className="flex items-center justify-between gap-3 border-b border-white/10 px-4 py-3">
+    <div className="mt-4 overflow-hidden rounded-[20px] border border-white/10 bg-slate-950/70 sm:rounded-[24px]">
+      <div className="flex items-center justify-between gap-3 border-b border-white/10 px-3.5 py-3 sm:px-4">
         <span className="text-sm font-medium text-slate-100">Search cohort position</span>
         <span className="flex items-baseline gap-1 text-xs font-medium text-slate-300">
           <span>{headerPrefix}</span>
@@ -135,12 +135,12 @@ function SearchCohortIndicator({ metrics, cumulativeAttempts, cumulativePrefix, 
         </span>
       </div>
 
-      <div className="space-y-4 px-4 py-4">
-        <div className="rounded-[18px] border border-white/10 bg-slate-900/60 px-4 py-3">
+      <div className="space-y-4 px-3.5 py-4 sm:px-4">
+        <div className="rounded-[18px] border border-white/10 bg-slate-900/60 px-3.5 py-3 sm:px-4">
           <div className="text-[10px] font-medium uppercase tracking-[0.22em] text-cyan-200">
             Cumulative odds {prefixLabel}
           </div>
-          <div className="mt-1 flex items-baseline gap-2">
+          <div className="mt-1 flex flex-wrap items-baseline gap-x-2 gap-y-1">
             <span className="inline-block min-w-[6ch] text-3xl font-semibold tracking-tight text-cyan-100 tabular-nums">{oddsPercentLabel}</span>
             <span className="text-xs text-slate-400">that at least one attempt has matched by now</span>
           </div>
@@ -152,21 +152,20 @@ function SearchCohortIndicator({ metrics, cumulativeAttempts, cumulativePrefix, 
           Each attempt is independent. This is not percent complete. More attempts improve the odds that one has already matched.
         </p>
 
-        <div className="overflow-hidden rounded-[18px] border border-white/10">
-          <table className="w-full text-left text-sm">
-            <tbody className="divide-y divide-white/5">
-              {milestoneRows.map(({ p, label, display, targetAttempts }) => (
-                <tr key={p}>
-                  <td className="px-4 py-2 text-slate-300">{label}</td>
-                  <td className="px-4 py-2 text-right font-mono text-xs text-slate-500">
-                    ~{formatNumber(Math.round(targetAttempts))} attempts
-                  </td>
-                  <td className="px-4 py-2 text-right font-medium text-slate-100">{display}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+        <ul className="divide-y divide-white/5 overflow-hidden rounded-[18px] border border-white/10">
+          {milestoneRows.map(({ p, label, display, targetAttempts }) => (
+            <li
+              key={p}
+              className="grid grid-cols-[1fr_auto] items-baseline gap-x-3 px-3.5 py-2 sm:grid-cols-[minmax(0,auto)_1fr_auto] sm:px-4"
+            >
+              <span className="text-sm text-slate-300">{label}</span>
+              <span className="text-right text-sm font-medium text-slate-100 sm:order-3">{display}</span>
+              <span className="col-span-2 font-mono text-[11px] text-slate-500 sm:col-span-1 sm:order-2 sm:px-3 sm:text-right sm:text-xs">
+                ~{formatNumber(Math.round(targetAttempts))} attempts
+              </span>
+            </li>
+          ))}
+        </ul>
 
         {warning && (
           <p className="rounded-[14px] border-l-2 border-amber-400/40 bg-amber-400/5 px-3 py-2 text-sm leading-6 text-amber-100/90">
@@ -213,14 +212,14 @@ function CohortAxis({ markerPct }) {
 
 function StatCard({ label, value, unit, secondary }) {
   return (
-    <div className="min-w-0 rounded-[22px] border border-white/10 bg-slate-950/70 p-3.5">
-      <div className="text-xs uppercase tracking-[0.22em] text-slate-500">{label}</div>
-      <div className="mt-2 flex items-baseline gap-1 truncate text-xl font-semibold tracking-tight text-white tabular-nums">
+    <div className="min-w-0 rounded-2xl border border-white/10 bg-slate-950/70 p-2.5 sm:rounded-[22px] sm:p-3.5">
+      <div className="truncate text-[10px] uppercase tracking-[0.18em] text-slate-500 sm:text-xs sm:tracking-[0.22em]">{label}</div>
+      <div className="mt-1.5 flex items-baseline gap-1 truncate text-base font-semibold tracking-tight text-white tabular-nums sm:mt-2 sm:text-xl">
         <span className="truncate">{value}</span>
-        {unit && <span className="shrink-0 text-xs font-normal text-slate-400">{unit}</span>}
+        {unit && <span className="shrink-0 text-[10px] font-normal text-slate-400 sm:text-xs">{unit}</span>}
       </div>
       {secondary && (
-        <div className="mt-1 truncate text-xs text-slate-400">{secondary}</div>
+        <div className="mt-1 truncate text-[11px] text-slate-400 sm:text-xs">{secondary}</div>
       )}
     </div>
   )
