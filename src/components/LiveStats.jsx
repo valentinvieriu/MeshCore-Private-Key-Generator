@@ -75,16 +75,19 @@ export default function LiveStats({
   const statItems = [
     { label: 'Attempts', value: formatNumber(totalAttempts), secondary: carriedAttempts > 0 ? `+${formatNumber(carriedAttempts)} from earlier runs` : null },
     { label: 'Throughput', value: throughputValue, unit: throughputUnit },
-    { label: 'Elapsed', value: formatDuration(elapsedMs) },
   ]
 
   return (
     <section className="rounded-3xl border border-white/10 bg-slate-900/70 p-4 shadow-[0_24px_90px_-56px_rgba(15,23,42,0.85)] backdrop-blur sm:rounded-[30px] sm:p-5">
-      <div className="flex items-center justify-end">
+      <div className="flex items-center justify-between gap-3">
+        <div className="flex items-baseline gap-2 text-slate-300">
+          <span className="text-[10px] uppercase tracking-[0.18em] text-slate-500 sm:text-xs sm:tracking-[0.22em]">Elapsed</span>
+          <span className="text-sm font-semibold tabular-nums text-slate-100 sm:text-base">{formatDuration(elapsedMs)}</span>
+        </div>
         <RunBadge runState={runState} />
       </div>
 
-      <div className="mt-3 grid grid-cols-3 gap-2 sm:gap-3">
+      <div className="mt-3 grid grid-cols-2 gap-2 sm:gap-3">
         {statItems.map((item) => (
           <StatCard
             key={item.label}
@@ -113,8 +116,6 @@ function SearchCohortIndicator({ metrics, cumulativeAttempts, cumulativePrefix, 
   const warning = getCohortWarning(cohortFraction)
   const warningLabel = warning ? WARNING_LABEL[warning] : null
   const oddsPercentLabel = formatOddsPercent(cohortFraction)
-  const headerPrefix = warningLabel ?? (running ? 'Cumulative odds:' : showHistory ? 'Last run odds:' : 'Ready')
-  const headerShowsOdds = !warningLabel && (running || showHistory)
 
   const milestoneRows = MILESTONE_TARGETS.map(({ p, label }) => {
     const etaSeconds = getMilestoneEtaSeconds({ p, cumulativeAttempts, expectedAttempts, rate })
@@ -129,10 +130,9 @@ function SearchCohortIndicator({ metrics, cumulativeAttempts, cumulativePrefix, 
     <div className="mt-4 overflow-hidden rounded-[20px] border border-white/10 bg-slate-950/70 sm:rounded-[24px]">
       <div className="flex items-center justify-between gap-3 border-b border-white/10 px-3.5 py-3 sm:px-4">
         <span className="text-sm font-medium text-slate-100">Search cohort position</span>
-        <span className="flex items-baseline gap-1 text-xs font-medium text-slate-300">
-          <span>{headerPrefix}</span>
-          {headerShowsOdds && <span className="inline-block min-w-[5ch] text-right tabular-nums">{oddsPercentLabel}</span>}
-        </span>
+        {warningLabel && (
+          <span className="text-xs font-medium text-amber-200">{warningLabel}</span>
+        )}
       </div>
 
       <div className="space-y-4 px-3.5 py-4 sm:px-4">
@@ -212,11 +212,11 @@ function CohortAxis({ markerPct }) {
 
 function StatCard({ label, value, unit, secondary }) {
   return (
-    <div className="min-w-0 rounded-2xl border border-white/10 bg-slate-950/70 p-2.5 sm:rounded-[22px] sm:p-3.5">
+    <div className="min-w-0 rounded-2xl border border-white/10 bg-slate-950/70 p-3 sm:rounded-[22px] sm:p-4">
       <div className="truncate text-[10px] uppercase tracking-[0.18em] text-slate-500 sm:text-xs sm:tracking-[0.22em]">{label}</div>
-      <div className="mt-1.5 flex items-baseline gap-1 truncate text-base font-semibold tracking-tight text-white tabular-nums sm:mt-2 sm:text-xl">
+      <div className="mt-1.5 flex items-baseline gap-1.5 truncate text-2xl font-semibold tracking-tight text-white tabular-nums sm:mt-2 sm:text-3xl">
         <span className="truncate">{value}</span>
-        {unit && <span className="shrink-0 text-[10px] font-normal text-slate-400 sm:text-xs">{unit}</span>}
+        {unit && <span className="shrink-0 text-xs font-normal text-slate-400 sm:text-sm">{unit}</span>}
       </div>
       {secondary && (
         <div className="mt-1 truncate text-[11px] text-slate-400 sm:text-xs">{secondary}</div>
